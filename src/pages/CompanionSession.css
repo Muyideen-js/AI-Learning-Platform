@@ -61,8 +61,9 @@
 }
 
 .tag {
-    font-size: 10px;
-    padding: 4px 10px;
+    font-size: 13px;
+    padding: 2px 6px;
+    border-radius: 3px;
     background: var(--bg-secondary);
     border: 1px solid var(--border-light);
     color: var(--text-secondary);
@@ -769,4 +770,159 @@
         opacity: 0;
         transform: translate(-50%, -50%) scale(0.9);
     }
+}
+/* ==========================================
+   MOBILE RESPONSIVE MEDIA QUERIES
+   ========================================== */
+
+/* Hide ChatRobot on mobile */
+@media (max-width: 768px) {
+  .chat-robot-container {
+    display: none !important;
+  }
+  .session-header {
+   padding: 12px 16px;
+  }
+  .header-left {
+    gap: 12px;
+  }
+  .companion-info h2 {
+    font-size: 14px;
+  }
+  .companion-tags {
+    display: none;
+  }
+  .header-right {
+    gap: 6px;
+  }
+  .btn-show, .btn-end {
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+  .session-timer {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+  .session-main {
+    padding: 16px 12px;
+  }
+  .pre-session {
+    padding: 20px 12px;
+  }
+  .transcript-area {
+    padding: 16px 12px;
+  }
+  .messages-list {
+    gap: 12px;
+  }
+  .msg-bubble {
+    padding: 10px 12px;
+    max-width: 90%;
+  }
+  .msg-name {
+    font-size: 11px;
+  }
+  .msg-text {
+    font-size: 13px;
+  }
+  .msg-actions {
+    gap: 6px;
+  }
+  .action-btn {
+    padding: 6px;
+  }
+  .chat-input-area {
+    padding: 12px;
+  }
+  .input-container {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .input-wrapper {
+    width: 100%;
+  }
+  .input-field {
+    font-size: 14px;
+  }
+  .audio-mode-btn, .send-btn {
+    padding: 10px 16px;
+    font-size: 12px;
+  }
+  .curriculum-sidebar {
+    width: 100%;
+    max-width: 100%;
+    right: 0;
+    left: 0;
+  }
+  .curriculum-header h3 {
+    font-size: 14px;
+  }
+  .module-item {
+    padding: 12px;
+  }
+  .module-title {
+    font-size: 12px;
+  }
+  .module-description {
+    font-size: 11px;
+  }
+  .pre-session h3 {
+    font-size: 14px !important;
+  }
+  .pre-session button {
+    padding: 8px 14px !important;
+    font-size: 11px !important;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .session-header {
+    padding: 16px 24px;
+  }
+  .companion-info h2 {
+    font-size: 16px;
+  }
+  .msg-bubble {
+    max-width: 85%;
+  }
+  .curriculum-sidebar {
+    width: 350px;
+  }
+  .chat-robot-container {
+    transform: scale(0.8);
+    bottom: 80px;
+    right: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .session-header {
+    padding: 10px 12px;
+  }
+  .header-left {
+    gap: 8px;
+  }
+  .companion-info h2 {
+    font-size: 12px;
+  }
+  .btn-back {
+    padding: 6px;
+  }
+  .btn-show, .btn-end {
+    padding: 5px 8px;
+    font-size: 9px;
+  }
+  .msg-bubble {
+    padding: 8px 10px;
+    max-width: 95%;
+  }
+  .msg-text {
+    font-size: 12px;
+  }
+  .input-field {
+    font-size: 13px;
+  }
+  .module-item {
+    padding: 10px;
+  }
 }

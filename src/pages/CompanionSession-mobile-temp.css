@@ -1,0 +1,138 @@
+﻿
+/* Updated mobile media queries with smaller text sizes */
+@media (max-width: 768px) {
+  .chat-robot-container {
+    display: none !important;
+  }
+  .session-header {
+    padding: 10px 12px;
+  }
+  .header-left {
+    gap: 10px;
+  }
+  .companion-info h2 {
+    font-size: 12px;
+  }
+  .companion-tags {
+    display: none;
+  }
+  .header-right {
+    gap: 4px;
+  }
+  .btn-show, .btn-end {
+    padding: 5px 8px;
+    font-size: 9px;
+  }
+  .session-timer {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+  .session-main {
+    padding: 12px 10px;
+  }
+  .pre-session {
+    padding: 16px 10px;
+  }
+  .transcript-area {
+    padding: 12px 10px;
+  }
+  .messages-list {
+    gap: 10px;
+  }
+  .msg-bubble {
+    padding: 8px 10px;
+    max-width: 90%;
+  }
+  .msg-name {
+    font-size: 10px;
+  }
+  .msg-text {
+    font-size: 12px;
+  }
+  .msg-actions {
+    gap: 4px;
+  }
+  .action-btn {
+    padding: 5px;
+  }
+  .chat-input-area {
+    padding: 10px;
+  }
+  .input-container {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .input-wrapper {
+    width: 100%;
+  }
+  .input-field {
+    font-size: 13px;
+  }
+  .audio-mode-btn, .send-btn {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+  .curriculum-sidebar {
+    width: 100%;
+    max-width: 100%;
+    right: 0;
+    left: 0;
+  }
+  .curriculum-header h3 {
+    font-size: 13px;
+  }
+  .module-item {
+    padding: 10px;
+  }
+  .module-title {
+    font-size: 11px;
+  }
+  .module-description {
+    font-size: 10px;
+  }
+  .pre-session h3 {
+    font-size: 13px !important;
+  }
+  .pre-session h2 {
+    font-size: 14px !important;
+  }
+  .pre-session p {
+    font-size: 11px !important;
+  }
+  .pre-session button {
+    padding: 7px 12px !important;
+    font-size: 10px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .session-header {
+    padding: 8px 10px;
+  }
+  .header-left {
+    gap: 6px;
+  }
+  .companion-info h2 {
+    font-size: 11px;
+  }
+  .btn-back {
+    padding: 5px;
+  }
+  .btn-show, .btn-end {
+    padding: 4px 6px;
+    font-size: 8px;
+  }
+  .msg-bubble {
+    padding: 7px 9px;
+    max-width: 95%;
+  }
+  .msg-text {
+    font-size: 11px;
+  }
+  .input-field {
+    font-size: 12px;
+  }
+  .module-item {
+    padding: 8px;
+  }
+}

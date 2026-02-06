@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Sparkles, PlusSquare, Home, Library } from 'lucide-react';
+import { LogOut, User, Sparkles, PlusSquare, Home, Library, Menu, X } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './Navbar.css';
@@ -9,6 +9,7 @@ const Navbar = () => {
   const { currentUser, userData, logout } = useAuth();
   const navigate = useNavigate();
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -116,7 +117,58 @@ const Navbar = () => {
             </Link>
           )}
         </div>
+
+        {/* Hamburger Menu Button (Mobile) */}
+        <button 
+          className="hamburger-btn"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
       </div>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            className="mobile-menu"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Link to="/" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+              <Home size={16} />
+              <span>Home</span>
+            </Link>
+            <Link to="/library" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+              <Library size={16} />
+              <span>Library</span>
+            </Link>
+            {currentUser ? (
+              <>
+                <Link to="/create-companion" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  <PlusSquare size={16} />
+                  <span>Create</span>
+                </Link>
+                <Link to="/my-journey" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  <User size={16} />
+                  <span>Journey</span>
+                </Link>
+                <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="mobile-link">
+                  <LogOut size={16} />
+                  <span>Logout</span>
+                </button>
+              </>
+            ) : (
+              <Link to="/sign-in" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                Sign In
+              </Link>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 };

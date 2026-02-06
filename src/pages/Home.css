@@ -204,3 +204,154 @@
     align-self: flex-end;
   }
 }
+
+/* ==========================================
+   MOBILE RESPONSIVE MEDIA QUERIES
+   ========================================== */
+
+@media (max-width: 768px) {
+
+  /* Hide robots on mobile */
+  .hero-robot-container,
+  .hero-robot-left {
+    display: none !important;
+  }
+
+  .home-container {
+    padding: 60px 14px 25px;
+    /* Moved up by reducing top padding */
+  }
+
+  .hero {
+    padding: 20px 0 30px;
+    /* Reduced padding */
+    text-align: center;
+  }
+
+  .hero h1 {
+    font-size: 1.4rem !important;
+    margin-bottom: 10px;
+  }
+
+  .hero p {
+    font-size: 11px !important;
+    margin-bottom: 16px;
+  }
+
+  .cta-buttons {
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .cta-buttons .btn {
+    width: auto !important;
+    max-width: 200px !important;
+    /* Reduced button width */
+    padding: 8px 16px !important;
+    font-size: 11px !important;
+    text-align: center !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 20px 0;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .stat-card h3 {
+    font-size: 1.1rem !important;
+  }
+
+  .stat-card p {
+    font-size: 9px !important;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .feature-card {
+    padding: 14px;
+  }
+
+  .feature-card h3 {
+    font-size: 13px !important;
+  }
+
+  .feature-card p {
+    font-size: 10px !important;
+  }
+
+  .cta {
+    padding: 25px 14px;
+  }
+
+  .cta h2 {
+    font-size: 1.1rem !important;
+    margin-bottom: 8px;
+  }
+
+  .cta p {
+    font-size: 11px !important;
+    margin-bottom: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-container {
+    padding: 55px 12px 20px;
+  }
+
+  .hero {
+    padding: 15px 0 25px;
+  }
+
+  .hero h1 {
+    font-size: 1.25rem !important;
+  }
+
+  .hero p {
+    font-size: 10px !important;
+  }
+
+  .cta-buttons .btn {
+    max-width: 180px !important;
+    padding: 7px 14px !important;
+    font-size: 10px !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 10px;
+  }
+
+  .stat-card h3 {
+    font-size: 1rem !important;
+  }
+
+  .stat-card p {
+    font-size: 8px !important;
+  }
+
+  .feature-card {
+    padding: 12px;
+  }
+
+  .feature-card h3 {
+    font-size: 12px !important;
+  }
+
+  .feature-card p {
+    font-size: 9px !important;
+  }
+}

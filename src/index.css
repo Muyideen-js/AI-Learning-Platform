@@ -288,7 +288,8 @@ pre {
   }
 
   .main-content {
-    padding-top: 70px;
+    /* padding-top: 70px; */
+    /* Removed for mobile */
   }
 
   .page-container {
