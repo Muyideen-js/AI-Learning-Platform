@@ -1,0 +1,171 @@
+.subscription-page {
+  min-height: calc(100vh - 60px);
+  padding: 30px 0;
+}
+
+.subscription-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.subscription-subtitle {
+  font-size: 14px;
+  color: var(--gray-600);
+  margin-top: 8px;
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 60px;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.plan-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  padding: 32px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s;
+}
+
+.plan-card:hover {
+  border-color: var(--black);
+  transform: translateY(-2px);
+}
+
+.plan-card.popular {
+  border-color: var(--black);
+  border-width: 2px;
+}
+
+.popular-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--black);
+  color: var(--white);
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.popular-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+.plan-header {
+  text-align: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.plan-name {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--black);
+}
+
+.plan-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+}
+
+.price-amount {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--black);
+}
+
+.price-period {
+  font-size: 14px;
+  color: var(--gray-600);
+}
+
+.plan-features {
+  list-style: none;
+  margin-bottom: 24px;
+  flex: 1;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 0;
+  color: var(--gray-700);
+  font-size: 13px;
+}
+
+.feature-item svg {
+  color: var(--black);
+  flex-shrink: 0;
+  margin-top: 2px;
+  width: 14px;
+  height: 14px;
+}
+
+.btn-plan {
+  width: 100%;
+  margin-top: auto;
+}
+
+.subscription-info {
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  padding: 32px;
+}
+
+.subscription-info h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: var(--black);
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.faq-item h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--black);
+}
+
+.faq-item p {
+  color: var(--gray-600);
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .plan-card.popular {
+    transform: scale(1);
+  }
+  
+  .plans-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,446 @@
+/* Robot Containers */
+.hero-robot-container {
+    position: absolute;
+    z-index: 2;
+}
+
+.hero-robot-left {
+    left: 5%;
+    top: 15%;
+}
+
+/* 3D Robot Base */
+.robot-3d {
+    position: relative;
+    width: 120px;
+    height: 140px;
+    filter: drop-shadow(0 10px 20px rgba(255, 255, 255, 0.1));
+}
+
+/* Robot Head - 3D Effect */
+.robot-head-3d {
+    position: relative;
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+    margin: 0 auto;
+    border: 3px solid #000;
+    box-shadow:
+        inset -5px -5px 10px rgba(0, 0, 0, 0.2),
+        inset 5px 5px 10px rgba(255, 255, 255, 0.8);
+}
+
+.robot-face {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 12px;
+}
+
+/* Eyes - 3D */
+.robot-eyes {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.robot-eye-3d {
+    width: 16px;
+    height: 16px;
+    background: #000;
+    border: 2px solid #fff;
+    box-shadow:
+        inset 2px 2px 4px rgba(0, 0, 0, 0.5),
+        0 2px 4px rgba(255, 255, 255, 0.3);
+    position: relative;
+    animation: blink 4s ease-in-out infinite;
+}
+
+.pupil {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: #fff;
+    border-radius: 50%;
+    top: 3px;
+    left: 3px;
+    animation: look 5s ease-in-out infinite;
+}
+
+@keyframes blink {
+
+    0%,
+    96%,
+    100% {
+        height: 16px;
+    }
+
+    98% {
+        height: 2px;
+    }
+}
+
+@keyframes look {
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    25% {
+        transform: translate(2px, 0);
+    }
+
+    50% {
+        transform: translate(0, 2px);
+    }
+
+    75% {
+        transform: translate(-2px, 0);
+    }
+}
+
+/* Mouth */
+.robot-mouth-3d {
+    width: 30px;
+    height: 3px;
+    background: #000;
+    margin: 0 auto;
+    box-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+/* Antenna - Teacher Robot */
+.robot-antenna-3d {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 18px;
+    background: linear-gradient(180deg, #fff 0%, #ccc 100%);
+    border: 1px solid #000;
+}
+
+.antenna-ball {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10px;
+    height: 10px;
+    background: radial-gradient(circle at 30% 30%, #fff, #999);
+    border: 2px solid #000;
+    animation: pulse-light 2s ease-in-out infinite;
+}
+
+@keyframes pulse-light {
+
+    0%,
+    100% {
+        box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+    }
+
+    50% {
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.9);
+    }
+}
+
+/* Robot Body - 3D */
+.robot-body-3d {
+    position: relative;
+    width: 60px;
+    height: 50px;
+    background: linear-gradient(135deg, #f5f5f5 0%, #d0d0d0 100%);
+    margin: 8px auto 0;
+    border: 3px solid #000;
+    box-shadow:
+        inset -4px -4px 8px rgba(0, 0, 0, 0.2),
+        inset 4px 4px 8px rgba(255, 255, 255, 0.8);
+}
+
+.body-panel {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    height: 20px;
+    background: #000;
+    border: 2px solid #fff;
+    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3);
+}
+
+.body-light {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 8px;
+    background: radial-gradient(circle, #fff, #aaa);
+    border: 1px solid #000;
+    animation: pulse-light 1.5s ease-in-out infinite;
+}
+
+/* Robot Arms */
+.robot-arms {
+    position: absolute;
+    width: 100%;
+    top: 80px;
+}
+
+.robot-arm-3d {
+    position: absolute;
+    width: 8px;
+    height: 30px;
+    background: linear-gradient(90deg, #fff 0%, #d0d0d0 100%);
+    border: 2px solid #000;
+    box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.2);
+}
+
+.robot-arm-3d.left {
+    left: 15px;
+    animation: wave-arm-left 3s ease-in-out infinite;
+    transform-origin: top center;
+}
+
+.robot-arm-3d.right {
+    right: 15px;
+    animation: wave-arm-right 3s ease-in-out infinite;
+    transform-origin: top center;
+}
+
+@keyframes wave-arm-left {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    50% {
+        transform: rotate(-15deg);
+    }
+}
+
+@keyframes wave-arm-right {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    50% {
+        transform: rotate(15deg);
+    }
+}
+
+/* Speech Bubble */
+.speech-bubble {
+    position: absolute;
+    top: -20px;
+    background: #fff;
+    color: #000;
+    padding: 12px 16px;
+    border: 3px solid #000;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.2);
+    animation: float-bubble 3s ease-in-out infinite;
+}
+
+@keyframes float-bubble {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+.left-bubble {
+    left: 100%;
+    margin-left: 20px;
+}
+
+.left-bubble::before {
+    content: '';
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-right: 12px solid #000;
+}
+
+.left-bubble::after {
+    content: '';
+    position: absolute;
+    left: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 10px solid #fff;
+}
+
+/* Elegant Splash - Bottom Right - REDUCED SIZE */
+.elegant-splash {
+    position: absolute;
+    bottom: 100px;
+    right: 60px;
+    width: 70px;
+    height: 70px;
+    z-index: 1;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.splash-ring {
+    position: absolute;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    width: 100%;
+    height: 100%;
+}
+
+.ring-1 {
+    width: 45px;
+    height: 45px;
+}
+
+.ring-2 {
+    width: 60px;
+    height: 60px;
+}
+
+.splash-core {
+    width: 30px;
+    height: 30px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+    border-radius: 50%;
+    border: 2px solid #ffffff;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .robot-3d {
+        width: 80px;
+        height: 100px;
+        transform: scale(0.7);
+    }
+
+    .hero-robot-left {
+        left: 2%;
+        top: 10%;
+    }
+
+    .speech-bubble {
+        font-size: 10px;
+        padding: 8px 12px;
+    }
+
+    .left-bubble {
+        margin-left: 10px;
+    }
+
+    /* Reduce splash further on mobile */
+    .elegant-splash {
+        width: 80px;
+        height: 80px;
+        bottom: 40px;
+        right: 40px;
+    }
+
+    .ring-1 {
+        width: 50px;
+        height: 50px;
+    }
+
+    .ring-2 {
+        width: 65px;
+        height: 65px;
+    }
+
+    .splash-core {
+        width: 30px;
+        height: 30px;
+    }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .robot-3d {
+        width: 80px;
+        height: 100px;
+    }
+
+    .robot-head-3d {
+        width: 60px;
+        height: 60px;
+    }
+
+    .robot-body-3d {
+        width: 50px;
+        height: 40px;
+    }
+
+    .speech-bubble {
+        font-size: 11px;
+        padding: 8px 12px;
+        max-width: 180px;
+    }
+
+    .elegant-splash {
+        width: 50px;
+        height: 50px;
+        bottom: 80px;
+        right: 40px;
+    }
+
+    .ring-1 {
+        width: 30px;
+        height: 30px;
+    }
+
+    .ring-2 {
+        width: 45px;
+        height: 45px;
+    }
+
+    .splash-core {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* Typing Cursor Animation */
+.typing-cursor {
+    animation: blink 1s step-end infinite;
+    font-weight: 700;
+    margin-left: 2px;
+}
+
+@keyframes blink {
+
+    0%,
+    50% {
+        opacity: 1;
+    }
+
+    51%,
+    100% {
+        opacity: 0;
+    }
+}

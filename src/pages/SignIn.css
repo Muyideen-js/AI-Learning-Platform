@@ -1,0 +1,136 @@
+.signin-page {
+  min-height: calc(100vh - 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: radial-gradient(circle at top left, var(--bg-tertiary), var(--bg-primary));
+}
+
+.signin-container {
+  width: 100%;
+  max-width: 440px;
+  transform: translateY(-20px);
+  animation: slideIn 0.5s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(0px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(-20px);
+  }
+}
+
+.signin-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  padding: 40px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(10px);
+}
+
+.signin-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.signin-subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+  font-size: 14px;
+}
+
+.error-alert {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  padding: 12px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-sm);
+}
+
+.signin-form {
+  margin-bottom: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.btn-full {
+  width: 100%;
+  padding: 12px 24px;
+  font-size: 14px;
+}
+
+.signin-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 24px 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.signin-divider::before,
+.signin-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.signin-divider span {
+  padding: 0 16px;
+}
+
+.signin-footer {
+  text-align: center;
+  margin-top: 24px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--accent-primary);
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 13px;
+  margin-left: 4px;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+  color: var(--accent-hover);
+}
+
+@media (max-width: 480px) {
+  .signin-card {
+    padding: 24px;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+  }
+}
