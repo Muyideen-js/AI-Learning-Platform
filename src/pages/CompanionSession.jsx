@@ -4,7 +4,7 @@ import { doc, getDoc, collection, addDoc, updateDoc, query, where, getDocs } fro
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateAIResponse as getAIResponse } from '../lib/gemini';
-import { ArrowLeft, Mic, MessageSquare, Square, Crown, Volume2, Send, Paperclip, MicOff, Copy, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Mic, MessageSquare, Square, Crown, Volume2, Send, Paperclip, MicOff, Copy, RotateCcw, Pause, StopCircle } from 'lucide-react';
 import ChatRobot from '../components/ChatRobot';
 import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
@@ -26,6 +26,7 @@ const CompanionSession = () => {
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false); // Track if AI is speaking
+  const [currentSpeakingMessageId, setCurrentSpeakingMessageId] = useState(null); // Track which message is being read
   const transcriptEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const silenceTimeoutRef = useRef(null);
@@ -40,6 +41,7 @@ const CompanionSession = () => {
   const [moduleMessageCount, setModuleMessageCount] = useState(0);
   const [curriculumVisible, setCurriculumVisible] = useState(false);
   const [moduleSessions, setModuleSessions] = useState({}); // Track which modules have sessions
+
 
   useEffect(() => {
     const fetchCompanion = async () => {
@@ -695,17 +697,57 @@ const CompanionSession = () => {
     showToast('Copied!');
   };
 
-  const handleReadMessage = (text) => {
+  const handleReadMessage = (text, messageId) => {
+    // If this message is already being read, pause/resume it
+    if (currentSpeakingMessageId === messageId) {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+        return;
+      } else if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.pause();
+        return;
+      }
+    }
+
+    // Start reading a new message
     const toastId = showToast('Waiting for AI to speak...', 0);
     const cleanText = stripMarkdown(text);
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 1.15;
     utterance.pitch = 1.0;
-    utterance.onstart = () => hideToast(toastId);
+    utterance.onstart = () => {
+      hideToast(toastId);
+      setIsSpeaking(true);
+      setCurrentSpeakingMessageId(messageId);
+    };
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setCurrentSpeakingMessageId(null);
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setCurrentSpeakingMessageId(null);
+    };
     const bestVoice = getBestVoice();
     if (bestVoice) utterance.voice = bestVoice;
     window.speechSynthesis.speak(utterance);
+  };
+
+  const handlePauseSpeech = () => {
+    if (window.speechSynthesis.speaking) {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      } else {
+        window.speechSynthesis.pause();
+      }
+    }
+  };
+
+  const handleStopSpeech = () => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+    setCurrentSpeakingMessageId(null);
   };
 
   const handleRegenerateMessage = async (messageId) => {
@@ -1021,10 +1063,14 @@ const CompanionSession = () => {
                             </button>
                             <button 
                               className="action-btn" 
-                              onClick={() => handleReadMessage(msg.text)}
-                              title="Read aloud"
+                              onClick={() => handleReadMessage(msg.text, msg.id)}
+                              title={currentSpeakingMessageId === msg.id ? "Pause/Resume" : "Read aloud"}
                             >
-                              <Volume2 size={14} />
+                              {currentSpeakingMessageId === msg.id ? (
+                                <Pause size={14} />
+                              ) : (
+                                <Volume2 size={14} />
+                              )}
                             </button>
                             <button 
                               className="action-btn" 

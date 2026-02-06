@@ -157,6 +157,7 @@ const CreateCompanion = () => {
                 {...register('name')}
                 className={`input ${errors.name ? 'input-error' : ''}`}
                 placeholder="e.g., Math Tutor, Language Helper"
+                disabled={loading}
               />
               {errors.name && (
                 <span className="error-message">{errors.name.message}</span>
@@ -167,18 +168,19 @@ const CreateCompanion = () => {
               <label className="form-label">
                 Subject <span className="required">*</span>
               </label>
-              <Controller
-                name="subject"
-                control={control}
-                render={({ field }) => (
-                  <CustomSelect
-                    value={field.value}
-                    onChange={field.onChange}
-                    options={SUBJECTS}
-                    placeholder="Select a subject"
-                  />
-                )}
-              />
+                <Controller
+                  name="subject"
+                  control={control}
+                  render={({ field }) => (
+                    <CustomSelect
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={SUBJECTS}
+                      placeholder="Select a subject"
+                      disabled={loading}
+                    />
+                  )}
+                />
               {errors.subject && (
                 <span className="error-message">{errors.subject.message}</span>
               )}
@@ -191,6 +193,7 @@ const CreateCompanion = () => {
                     placeholder="Enter custom subject"
                     className="input"
                     style={{ width: '100%' }}
+                    disabled={loading}
                   />
                 </div>
               )}
@@ -206,6 +209,7 @@ const CreateCompanion = () => {
                 className={`input ${errors.topic ? 'input-error' : ''}`}
                 placeholder="Describe what this companion will teach..."
                 rows={4}
+                disabled={loading}
               />
               {errors.topic && (
                 <span className="error-message">{errors.topic.message}</span>
@@ -224,6 +228,7 @@ const CreateCompanion = () => {
                   className={`input ${errors.duration ? 'input-error' : ''}`}
                   placeholder="e.g., 30"
                   min="1"
+                  disabled={loading}
                 />
                 {errors.duration && (
                   <span className="error-message">{errors.duration.message}</span>
@@ -243,6 +248,7 @@ const CreateCompanion = () => {
                       onChange={field.onChange}
                       options={VOICES}
                       placeholder="Select voice"
+                      disabled={loading}
                     />
                   )}
                 />
@@ -265,6 +271,7 @@ const CreateCompanion = () => {
                     onChange={field.onChange}
                     options={STYLES}
                     placeholder="Select style"
+                    disabled={loading}
                   />
                 )}
               />

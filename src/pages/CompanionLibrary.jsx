@@ -118,7 +118,7 @@ const CompanionLibrary = () => {
         ) : (
           <>
             {/* My Companions Section */}
-            {myCompanions.length > 0 && (
+            {myCompanions.length > 0 ? (
               <div style={{ marginBottom: '40px' }}>
                 <h2 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '20px', color: 'var(--text-primary)' }}>
                   📚 My Companions
@@ -128,6 +128,32 @@ const CompanionLibrary = () => {
                     <CompanionCard key={companion.id} companion={companion} />
                   ))}
                 </div>
+              </div>
+            ) : (
+              <div style={{ marginBottom: '40px', textAlign: 'center', padding: '40px 20px', background: 'var(--bg-secondary)', border: '2px dashed var(--border-light)', borderRadius: '8px' }}>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '12px', color: 'var(--text-primary)' }}>
+                  📚 No Companions Yet
+                </h2>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '14px' }}>
+                  Create your first AI companion to start learning!
+                </p>
+                <button 
+                  onClick={() => navigate('/create-companion')}
+                  style={{
+                    padding: '10px 20px',
+                    background: 'var(--text-primary)',
+                    color: 'var(--bg-primary)',
+                    border: '2px solid var(--text-primary)',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
+                  }}
+                >
+                  Create Companion
+                </button>
               </div>
             )}
 

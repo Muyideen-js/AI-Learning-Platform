@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './CustomSelect.css';
 
-const CustomSelect = ({ value, onChange, options, placeholder = "Select..." }) => {
+const CustomSelect = ({ value, onChange, options, placeholder = "Select...", disabled = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -25,7 +25,9 @@ const CustomSelect = ({ value, onChange, options, placeholder = "Select..." }) =
       <button
         type="button"
         className="custom-select-trigger"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        style={{ opacity: disabled ? 0.6 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
       >
         <span>{selectedOption ? selectedOption.label : placeholder}</span>
         <motion.div
