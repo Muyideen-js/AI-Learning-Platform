@@ -481,13 +481,17 @@ const CompanionSession = () => {
     return () => clearInterval(interval);
   }, [sessionStarted, moduleStartTime]);
   
-  // Helper: Check if module is unlocked
+  // Helper:  // Check if module is unlocked based on cumulative progress
   const isModuleUnlocked = (moduleId) => {
-    if (moduleId === 1) return true; // First module always unlocked
+    if (moduleId === 1) return true;
     
-    const prevModuleProgress = moduleProgress.find(p => p.moduleId === moduleId - 1);
-    // Require BOTH 10 messages AND 60 seconds
-    return prevModuleProgress && prevModuleProgress.timeSpent >= 60 && prevModuleProgress.messageCount >= 10;
+    const prevModuleId = moduleId - 1;
+    const prevProgress = (companion?.moduleProgress || []).find(p => p.moduleId === prevModuleId);
+    
+    if (!prevProgress) return false;
+    
+    // Check cumulative totals: 10+ messages AND 1+ minute
+    return (prevProgress.totalMessages || 0) >= 10 && (prevProgress.totalTime || 0) >= 60;
   };
   
   // Helper: Check if module is completed
@@ -550,7 +554,7 @@ const CompanionSession = () => {
     }
   };
 
-  const endSession = async () => {
+    const endSession = async () => {
     try {
       // Stop speech recognition
       if (recognitionRef.current) {
@@ -563,13 +567,51 @@ const CompanionSession = () => {
         window.speechSynthesis.cancel();
       }
 
-      if (sessionId) {
+      // Save cumulative progress for current module
+      if (sessionId && companion) {
         await updateDoc(doc(db, 'sessions', sessionId), {
           endedAt: new Date(),
           duration: sessionDuration,
           transcript: transcript
         });
+
+        // Update companion document with cumulative module stats
+        const companionRef = doc(db, 'companions', id);
+        const companionDoc = await getDoc(companionRef);
+        
+        if (companionDoc.exists()) {
+          const currentProgress = companionDoc.data().moduleProgress || [];
+          const moduleIndex = currentProgress.findIndex(p => p.moduleId === currentModuleId);
+          
+          if (moduleIndex >= 0) {
+            // Add to existing cumulative stats
+            currentProgress[moduleIndex] = {
+              ...currentProgress[moduleIndex],
+              totalTime: (currentProgress[moduleIndex].totalTime || 0) + moduleTimeSpent,
+              totalMessages: (currentProgress[moduleIndex].totalMessages || 0) + moduleMessageCount,
+              lastSessionTime: moduleTimeSpent,
+              lastSessionMessages: moduleMessageCount,
+              lastAccessed: new Date()
+            };
+          } else {
+            // Create new module progress entry
+            currentProgress.push({
+              moduleId: currentModuleId,
+              totalTime: moduleTimeSpent,
+              totalMessages: moduleMessageCount,
+              lastSessionTime: moduleTimeSpent,
+              lastSessionMessages: moduleMessageCount,
+              completed: false,
+              lastAccessed: new Date()
+            });
+          }
+          
+          await updateDoc(companionRef, {
+            moduleProgress: currentProgress
+          });
+        }
       }
+      
       setSessionStarted(false);
       setIsRecording(false);
       setMode('text');
@@ -1067,13 +1109,27 @@ const CompanionSession = () => {
                         </div>
                         <div className="module-title">{module.title}</div>
                         <div className="module-description">{module.description}</div>
-                        {isCurrent && (
-                          <div className="module-timer">
-                            ⏱️ {Math.floor(moduleTimeSpent / 60)}:{(moduleTimeSpent % 60).toString().padStart(2, '0')}
-                            <br />
-                            💬 {moduleMessageCount} messages
-                          </div>
-                        )}
+                        {(() => {
+                          const moduleStats = (companion?.moduleProgress || []).find(p => p.moduleId === module.id);
+                          const totalTime = moduleStats?.totalTime || 0;
+                          const totalMessages = moduleStats?.totalMessages || 0;
+                          
+                          return (totalTime > 0 || totalMessages > 0 || isCurrent) && (
+                            <div className="module-timer">
+                              {isCurrent ? (
+                                <>
+                                  ⏱️ {Math.floor(moduleTimeSpent / 60)}:{(moduleTimeSpent % 60).toString().padStart(2, '0')}
+                                  <br />
+                                  💬 {moduleMessageCount} messages
+                                </>
+                              ) : (
+                                <>
+                                  📊 Total: {Math.floor(totalTime / 60)}min {totalMessages}msg
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}
