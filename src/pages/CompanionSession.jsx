@@ -4,7 +4,7 @@ import { doc, getDoc, collection, addDoc, updateDoc, query, where, getDocs } fro
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateAIResponse as getAIResponse } from '../lib/gemini';
-import { ArrowLeft, Mic, MessageSquare, Square, Crown, Volume2, Send, Paperclip, MicOff, Copy, RotateCcw, Pause, StopCircle } from 'lucide-react';
+import { ArrowLeft, Mic, MessageSquare, Square, Crown, Volume2, Send, Paperclip, MicOff, Copy, RotateCcw, Pause, StopCircle, ArrowDown } from 'lucide-react';
 import ChatRobot from '../components/ChatRobot';
 import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
@@ -26,8 +26,11 @@ const CompanionSession = () => {
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false); // Track if AI is speaking
+  const [isPaused, setIsPaused] = useState(false); // Track if TTS is paused
   const [currentSpeakingMessageId, setCurrentSpeakingMessageId] = useState(null); // Track which message is being read
+  const [showScrollButton, setShowScrollButton] = useState(false); // Show scroll to bottom button
   const transcriptEndRef = useRef(null);
+  const transcriptAreaRef = useRef(null);
   const recognitionRef = useRef(null);
   const silenceTimeoutRef = useRef(null);
   const messageIdCounter = useRef(0);
@@ -436,13 +439,36 @@ const CompanionSession = () => {
     }
   };
   
-  // Auto-scroll to bottom of chat
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (transcriptEndRef.current) {
       transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [transcript, isProcessing]);
+  }, [transcript]);
 
+  // Detect scroll position to show/hide scroll button
+  useEffect(() => {
+    const handleScroll = () => {
+      if (transcriptAreaRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = transcriptAreaRef.current;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+        setShowScrollButton(!isNearBottom);
+      }
+    };
+
+    const transcriptArea = transcriptAreaRef.current;
+    if (transcriptArea) {
+      transcriptArea.addEventListener('scroll', handleScroll);
+      return () => transcriptArea.removeEventListener('scroll', handleScroll);
+    }
+  }, [sessionStarted]);
+
+  // Scroll to bottom function
+  const scrollToBottom = () => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Timer effect
   // Track time spent on current module
   useEffect(() => {
     if (!sessionStarted || !moduleStartTime) return;
@@ -700,11 +726,13 @@ const CompanionSession = () => {
   const handleReadMessage = (text, messageId) => {
     // If this message is already being read, pause/resume it
     if (currentSpeakingMessageId === messageId) {
-      if (window.speechSynthesis.paused) {
+      if (isPaused) {
         window.speechSynthesis.resume();
+        setIsPaused(false);
         return;
       } else if (window.speechSynthesis.speaking) {
         window.speechSynthesis.pause();
+        setIsPaused(true);
         return;
       }
     }
@@ -719,14 +747,17 @@ const CompanionSession = () => {
     utterance.onstart = () => {
       hideToast(toastId);
       setIsSpeaking(true);
+      setIsPaused(false);
       setCurrentSpeakingMessageId(messageId);
     };
     utterance.onend = () => {
       setIsSpeaking(false);
+      setIsPaused(false);
       setCurrentSpeakingMessageId(null);
     };
     utterance.onerror = () => {
       setIsSpeaking(false);
+      setIsPaused(false);
       setCurrentSpeakingMessageId(null);
     };
     const bestVoice = getBestVoice();
@@ -747,7 +778,19 @@ const CompanionSession = () => {
   const handleStopSpeech = () => {
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
+    setIsPaused(false);
     setCurrentSpeakingMessageId(null);
+  };
+
+  // Toggle pause/resume for global controls
+  const handleTogglePauseResume = () => {
+    if (isPaused) {
+      window.speechSynthesis.resume();
+      setIsPaused(false);
+    } else if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.pause();
+      setIsPaused(true);
+    }
   };
 
   const handleRegenerateMessage = async (messageId) => {
@@ -825,6 +868,27 @@ const CompanionSession = () => {
             <div className="session-timer">
               {Math.floor(sessionDuration / 60)}:{(sessionDuration % 60).toString().padStart(2, '0')}
             </div>
+            
+            {/* TTS Controls - Show when speaking */}
+            {isSpeaking && (
+              <div className="tts-controls">
+                <button 
+                  onClick={handleTogglePauseResume}
+                  className="btn-tts"
+                  title={isPaused ? "Resume" : "Pause"}
+                >
+                  {isPaused ? <Volume2 size={14} /> : <Pause size={14} />}
+                </button>
+                <button 
+                  onClick={handleStopSpeech}
+                  className="btn-tts"
+                  title="Stop"
+                >
+                  <StopCircle size={14} />
+                </button>
+              </div>
+            )}
+            
             {companion?.curriculum && companion.curriculum.length > 0 && (
               <button 
                 onClick={() => setCurriculumVisible(!curriculumVisible)}
@@ -842,7 +906,7 @@ const CompanionSession = () => {
       </div>
 
       {/* Main Content */}
-      <div className="session-main">
+      <div className="session-main" ref={sessionStarted ? transcriptAreaRef : null}>
         {!sessionStarted ? (
           <div className="pre-session">
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -1107,8 +1171,19 @@ const CompanionSession = () => {
               <div ref={transcriptEndRef} />
             </div>
 
-            {/* Input Bar */}
-            <div className="input-bar">
+            {/* Scroll to Bottom Button */}
+            {showScrollButton && (
+              <button 
+                className="scroll-to-bottom"
+                onClick={scrollToBottom}
+                title="Scroll to bottom"
+              >
+                <ArrowDown size={20} />
+              </button>
+            )}
+
+            {/* Input Area */}
+            <div className="chat-input-area">
               <div className="input-container">
                 {mode === 'text' ? (
                   <>

@@ -11,6 +11,16 @@
     position: relative;
 }
 
+/* Main Session Area */
+.session-main {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 80px;
+    /* Space for fixed input area */
+}
+
 /* Header */
 .session-header {
     padding: 20px 30px;
@@ -336,13 +346,13 @@
     }
 }
 
-/* Input Bar */
-.input-bar {
+/* Chat Input Area - Fixed to Bottom */
+.chat-input-area {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 16px 30px 20px;
+    padding: 12px 20px;
     background: var(--bg-primary);
     border-top: 1px solid var(--border-light);
     z-index: 100;
@@ -771,158 +781,396 @@
         transform: translate(-50%, -50%) scale(0.9);
     }
 }
+
 /* ==========================================
-   MOBILE RESPONSIVE MEDIA QUERIES
+   MOBILE RESPONSIVE - IMPROVED & COMPACT
    ========================================== */
 
-/* Hide ChatRobot on mobile */
 @media (max-width: 768px) {
-  .chat-robot-container {
-    display: none !important;
-  }
-  .session-header {
-   padding: 12px 16px;
-  }
-  .header-left {
-    gap: 12px;
-  }
-  .companion-info h2 {
-    font-size: 14px;
-  }
-  .companion-tags {
-    display: none;
-  }
-  .header-right {
-    gap: 6px;
-  }
-  .btn-show, .btn-end {
-    padding: 6px 10px;
-    font-size: 10px;
-  }
-  .session-timer {
-    font-size: 12px;
-    padding: 4px 8px;
-  }
-  .session-main {
-    padding: 16px 12px;
-  }
-  .pre-session {
-    padding: 20px 12px;
-  }
-  .transcript-area {
-    padding: 16px 12px;
-  }
-  .messages-list {
-    gap: 12px;
-  }
-  .msg-bubble {
-    padding: 10px 12px;
-    max-width: 90%;
-  }
-  .msg-name {
-    font-size: 11px;
-  }
-  .msg-text {
-    font-size: 13px;
-  }
-  .msg-actions {
-    gap: 6px;
-  }
-  .action-btn {
-    padding: 6px;
-  }
-  .chat-input-area {
-    padding: 12px;
-  }
-  .input-container {
-    flex-direction: column;
-    gap: 8px;
-  }
-  .input-wrapper {
-    width: 100%;
-  }
-  .input-field {
-    font-size: 14px;
-  }
-  .audio-mode-btn, .send-btn {
-    padding: 10px 16px;
-    font-size: 12px;
-  }
-  .curriculum-sidebar {
-    width: 100%;
-    max-width: 100%;
+
+    /* Hide robot completely */
+    .chat-robot-container {
+        display: none !important;
+    }
+
+    /* Header - more compact */
+    .session-header {
+        padding: 8px 12px;
+        min-height: auto;
+    }
+
+    .header-left {
+        gap: 8px;
+    }
+
+    .btn-back {
+        padding: 6px;
+    }
+
+    .companion-info h2 {
+        font-size: 12px;
+        margin: 0;
+    }
+
+    .companion-tags {
+        display: none;
+    }
+
+    .header-right {
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    .btn-show,
+    .btn-end {
+        padding: 5px 8px;
+        font-size: 9px;
+        white-space: nowrap;
+    }
+
+    .session-timer {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+
+    /* Main content area */
+    .session-main {
+        padding: 10px 8px;
+    }
+
+    /* Pre-session view */
+    .pre-session {
+        padding: 12px 10px;
+        text-align: center;
+    }
+
+    .pre-session h2 {
+        font-size: 1.1rem !important;
+        margin-bottom: 6px;
+    }
+
+    .pre-session h3 {
+        font-size: 12px !important;
+        margin-bottom: 12px;
+    }
+
+    .pre-session p {
+        font-size: 10px !important;
+        margin-bottom: 10px;
+    }
+
+    .pre-session button {
+        padding: 7px 12px !important;
+        font-size: 10px !important;
+        margin: 0 auto;
+    }
+
+    /* Chat/Transcript area */
+    .transcript-area {
+        padding: 10px 8px;
+    }
+
+    .messages-list {
+        gap: 10px;
+    }
+
+    .msg-bubble {
+        padding: 8px 10px;
+        max-width: 85%;
+    }
+
+    .msg-avatar {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+
+    .msg-name {
+        font-size: 10px;
+        margin-bottom: 3px;
+    }
+
+    .msg-text {
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    .msg-text p {
+        margin-bottom: 8px;
+    }
+
+    .msg-text h1,
+    .msg-text h2,
+    .msg-text h3 {
+        font-size: 13px !important;
+        margin: 8px 0 6px;
+    }
+
+    .msg-text ul,
+    .msg-text ol {
+        padding-left: 18px;
+        margin: 6px 0;
+    }
+
+    .msg-text code {
+        font-size: 10px;
+        padding: 1px 4px;
+    }
+
+    .msg-actions {
+        gap: 4px;
+        margin-top: 4px;
+    }
+
     right: 0;
     left: 0;
-  }
-  .curriculum-header h3 {
-    font-size: 14px;
-  }
-  .module-item {
-    padding: 12px;
-  }
-  .module-title {
-    font-size: 12px;
-  }
-  .module-description {
-    font-size: 11px;
-  }
-  .pre-session h3 {
-    font-size: 14px !important;
-  }
-  .pre-session button {
-    padding: 8px 14px !important;
-    font-size: 11px !important;
-  }
 }
 
-@media (min-width: 769px) and (max-width: 1024px) {
-  .session-header {
-    padding: 16px 24px;
-  }
-  .companion-info h2 {
-    font-size: 16px;
-  }
-  .msg-bubble {
-    max-width: 85%;
-  }
-  .curriculum-sidebar {
-    width: 350px;
-  }
-  .chat-robot-container {
-    transform: scale(0.8);
-    bottom: 80px;
-    right: 20px;
-  }
-}
-
-@media (max-width: 480px) {
-  .session-header {
+.curriculum-header {
     padding: 10px 12px;
-  }
-  .header-left {
-    gap: 8px;
-  }
-  .companion-info h2 {
+}
+
+.curriculum-header h3 {
     font-size: 12px;
-  }
-  .btn-back {
-    padding: 6px;
-  }
-  .btn-show, .btn-end {
-    padding: 5px 8px;
-    font-size: 9px;
-  }
-  .msg-bubble {
-    padding: 8px 10px;
-    max-width: 95%;
-  }
-  .msg-text {
-    font-size: 12px;
-  }
-  .input-field {
-    font-size: 13px;
-  }
-  .module-item {
+}
+
+.module-list {
+    padding: 8px;
+}
+
+.module-item {
     padding: 10px;
-  }
+    margin-bottom: 8px;
+}
+
+.module-number {
+    font-size: 9px;
+}
+
+.module-title {
+    font-size: 11px;
+}
+
+.module-description {
+    font-size: 10px;
+}
+
+.module-status {
+    font-size: 16px;
+}
+}
+
+/* Tablet view */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .session-header {
+        padding: 14px 20px;
+    }
+
+    .companion-info h2 {
+        font-size: 15px;
+    }
+
+    .msg-bubble {
+        max-width: 80%;
+    }
+
+    .curriculum-sidebar {
+        width: 320px;
+    }
+
+    .chat-robot-container {
+        transform: scale(0.75);
+        bottom: 70px;
+        right: 15px;
+    }
+}
+
+/* Small phones - extra compact */
+@media (max-width: 480px) {
+    .session-header {
+        padding: 6px 10px;
+    }
+
+    .header-left {
+        gap: 6px;
+    }
+
+    .companion-info h2 {
+        font-size: 11px;
+    }
+
+    .btn-back {
+        padding: 5px;
+    }
+
+    .btn-show,
+    .btn-end {
+        padding: 4px 6px;
+        font-size: 8px;
+    }
+
+    .session-timer {
+        font-size: 9px;
+        padding: 2px 5px;
+    }
+
+    .session-main {
+        padding: 8px 6px;
+    }
+
+    .pre-session {
+        padding: 10px 8px;
+    }
+
+    .pre-session h2 {
+        font-size: 1rem !important;
+    }
+
+    .pre-session h3 {
+        font-size: 11px !important;
+    }
+
+    .pre-session p {
+        font-size: 9px !important;
+    }
+
+    .pre-session button {
+        padding: 6px 10px !important;
+        font-size: 9px !important;
+    }
+
+    .msg-bubble {
+        padding: 7px 8px;
+        max-width: 90%;
+    }
+
+    .msg-avatar {
+        width: 24px;
+        height: 24px;
+        font-size: 11px;
+    }
+
+    .msg-name {
+        font-size: 9px;
+    }
+
+    .msg-text {
+        font-size: 11px;
+    }
+
+    .msg-text code {
+        font-size: 9px;
+    }
+
+
+    .input-field {
+        font-size: 12px;
+        padding: 6px 8px;
+        min-height: 32px;
+        max-height: 50px;
+    }
+
+    .audio-mode-btn,
+    .send-btn {
+        padding: 6px 8px;
+        font-size: 9px;
+    }
+
+    /* Scroll button - even smaller */
+    .scroll-to-bottom {
+        bottom: 65px;
+        right: 12px;
+        width: 38px;
+        height: 38px;
+    }
+}
+
+.module-item {
+    padding: 8px;
+}
+
+.module-title {
+    font-size: 10px;
+}
+
+.module-description {
+    font-size: 9px;
+}
+}
+
+/* Scroll to Bottom Button */
+.scroll-to-bottom {
+    position: fixed;
+    bottom: 90px;
+    right: 30px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border: 2px solid var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    z-index: 100;
+    animation: fadeIn 0.3s ease;
+}
+
+.scroll-to-bottom:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.3);
+}
+
+.scroll-to-bottom:active {
+    transform: translateY(-1px);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* TTS Controls in Header */
+.tts-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: 3px;
+    animation: fadeIn 0.3s ease;
+}
+
+.btn-tts {
+    padding: 5px 8px;
+    background: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+}
+
+.btn-tts:hover {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+    background: var(--bg-primary);
+}
+
+.btn-tts:active {
+    transform: scale(0.95);
 }
