@@ -4,6 +4,7 @@ import { LogOut, User, Sparkles, PlusSquare, Home, Library, Menu, X } from 'luci
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './Navbar.css';
+import './logo-styles.css';
 
 const Navbar = () => {
   const { currentUser, userData, logout } = useAuth();
@@ -32,8 +33,10 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="navbar-container">
         <Link to="/" className="navbar-logo">
-          <Sparkles size={18} />
-          <span>AI Learning</span>
+          <div className="orb-logo">
+            <span className="logo-initials">MS</span>
+          </div>
+          <span className="logo-text">MindSpark</span>
         </Link>
 
         <div className="navbar-links">

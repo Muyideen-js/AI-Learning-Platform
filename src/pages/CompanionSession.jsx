@@ -44,6 +44,9 @@ const CompanionSession = () => {
   const [moduleMessageCount, setModuleMessageCount] = useState(0);
   const [curriculumVisible, setCurriculumVisible] = useState(false);
   const [moduleSessions, setModuleSessions] = useState({}); // Track which modules have sessions
+  const [cumulativeModuleStats, setCumulativeModuleStats] = useState({}); // Store cumulative stats per module
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [unlockedModuleId, setUnlockedModuleId] = useState(null);
 
 
   useEffect(() => {
@@ -51,7 +54,20 @@ const CompanionSession = () => {
       try {
         const companionDoc = await getDoc(doc(db, 'companions', id));
         if (companionDoc.exists()) {
-          setCompanion({ id: companionDoc.id, ...companionDoc.data() });
+          const data = companionDoc.data();
+          setCompanion({ id: companionDoc.id, ...data });
+          
+          // Load cumulative module stats
+          const moduleProgressData = data.moduleProgress || [];
+          const statsMap = {};
+          moduleProgressData.forEach(progress => {
+            statsMap[progress.moduleId] = {
+              totalTime: progress.totalTime || 0,
+              totalMessages: progress.totalMessages || 0,
+              completed: progress.completed || false
+            };
+          });
+          setCumulativeModuleStats(statsMap);
         } else {
           navigate('/library');
         }
@@ -480,6 +496,28 @@ const CompanionSession = () => {
     
     return () => clearInterval(interval);
   }, [sessionStarted, moduleStartTime]);
+  
+  // Detect when next module should unlock
+  useEffect(() => {
+    if (!sessionStarted || !companion?.curriculum) return;
+    
+    const currentStats = cumulativeModuleStats[currentModuleId] || { totalTime: 0, totalMessages: 0 };
+    const cumulativeTime = currentStats.totalTime + moduleTimeSpent;
+    const cumulativeMessages = currentStats.totalMessages + moduleMessageCount;
+    
+    // Check if requirements for next module are met
+    if (cumulativeTime >= 60 && cumulativeMessages >= 10) {
+      const nextModuleId = currentModuleId + 1;
+      if (nextModuleId <= companion.curriculum.length) {
+        const nextModuleUnlocked = isModuleUnlocked(nextModuleId);
+        if (!nextModuleUnlocked && !showUnlockModal) {
+          // Show unlock notification
+          setUnlockedModuleId(nextModuleId);
+          setShowUnlockModal(true);
+        }
+      }
+    }
+  }, [moduleTimeSpent, moduleMessageCount, sessionStarted, currentModuleId]);
   
   // Helper:  // Check if module is unlocked based on cumulative progress
   const isModuleUnlocked = (moduleId) => {
@@ -1110,21 +1148,21 @@ const CompanionSession = () => {
                         <div className="module-title">{module.title}</div>
                         <div className="module-description">{module.description}</div>
                         {(() => {
-                          const moduleStats = (companion?.moduleProgress || []).find(p => p.moduleId === module.id);
-                          const totalTime = moduleStats?.totalTime || 0;
-                          const totalMessages = moduleStats?.totalMessages || 0;
+                          const moduleStats = cumulativeModuleStats[module.id] || { totalTime: 0, totalMessages: 0 };
+                          const displayTime = isCurrent ? moduleStats.totalTime + moduleTimeSpent : moduleStats.totalTime;
+                          const displayMessages = isCurrent ? moduleStats.totalMessages + moduleMessageCount : moduleStats.totalMessages;
                           
-                          return (totalTime > 0 || totalMessages > 0 || isCurrent) && (
+                          return (displayTime > 0 || displayMessages > 0 || isCurrent) && (
                             <div className="module-timer">
                               {isCurrent ? (
                                 <>
-                                  ⏱️ {Math.floor(moduleTimeSpent / 60)}:{(moduleTimeSpent % 60).toString().padStart(2, '0')}
+                                  ⏱️ {Math.floor(displayTime / 60)}:{(displayTime % 60).toString().padStart(2, '0')}
                                   <br />
-                                  💬 {moduleMessageCount} messages
+                                  💬 {displayMessages} messages
                                 </>
                               ) : (
                                 <>
-                                  📊 Total: {Math.floor(totalTime / 60)}min {totalMessages}msg
+                                  📊 Total: {Math.floor(displayTime / 60)}min {displayMessages}msg
                                 </>
                               )}
                             </div>

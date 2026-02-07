@@ -1,0 +1,29 @@
+﻿
+/* Modern Gradient Orb Logo */
+.orb-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.logo-initials {
+  font-size: 14px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -1px;
+}
+
+.navbar-logo:hover .orb-logo {
+  transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.4);
+}
