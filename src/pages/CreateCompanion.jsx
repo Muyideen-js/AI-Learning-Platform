@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import CustomSelect from '../components/CustomSelect';
+import { generateCurriculum } from '../lib/gemini';
 import './CreateCompanion.css';
 
 const companionSchema = z.object({
@@ -82,14 +83,29 @@ const CreateCompanion = () => {
       
       // Generate curriculum using AI
       try {
-        const { generateCurriculum } = await import('../lib/gemini');
-        const curriculum = await generateCurriculum(finalSubject, data.topic);
+        const curriculum = await generateCurriculum(
+          data.topic,
+          `Learn ${finalSubject}: ${data.topic}`,
+          8,
+          'Beginner'
+        );
         
         await updateDoc(doc(db, 'companions', docRef.id), {
           curriculum: curriculum
         });
       } catch (curriculumError) {
         console.error('Curriculum generation failed:', curriculumError);
+        // Fallback: Create basic 8-module curriculum
+        const fallbackCurriculum = Array.from({ length: 8 }, (_, i) => ({
+          id: i + 1,
+          title: `Module ${i + 1}`,
+          description: `Learn about ${data.topic} - Part ${i + 1}`,
+          quiz: { questions: [] }
+        }));
+        
+        await updateDoc(doc(db, 'companions', docRef.id), {
+          curriculum: fallbackCurriculum
+        });
       }
       
       navigate(`/companion/${docRef.id}`);

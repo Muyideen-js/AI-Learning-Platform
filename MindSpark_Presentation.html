@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindSpark - Hackathon Presentation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+        }
+
+        .slide {
+            width: 210mm;
+            height: 297mm;
+            padding: 60px;
+            page-break-after: always;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .slide:last-child {
+            page-break-after: auto;
+        }
+
+        /* Slide 1 - Title */
+        .title-slide {
+            text-align: center;
+            justify-content: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            margin: 0 auto 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 900;
+            color: #0f172a;
+            letter-spacing: -2px;
+        }
+
+        h1 {
+            font-size: 64px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tagline {
+            font-size: 24px;
+            color: #94a3b8;
+            margin-bottom: 40px;
+            font-weight: 400;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Section Titles */
+        h2 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 40px;
+            color: #ffffff;
+        }
+
+        h3 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #e2e8f0;
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+
+        .feature h4 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+
+        .feature p {
+            font-size: 16px;
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        /* Tech Stack */
+        .tech-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .tech-badge {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        /* Problem/Solution */
+        .content-box {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            border-left: 4px solid #ffffff;
+        }
+
+        .content-box h3 {
+            margin-bottom: 15px;
+        }
+
+        .content-box p, .content-box ul {
+            font-size: 18px;
+            line-height: 1.8;
+            color: #cbd5e1;
+        }
+
+        .content-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .content-box li {
+            padding-left: 30px;
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .content-box li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4ade80;
+            font-weight: 700;
+        }
+
+        /* Footer */
+        .slide-footer {
+            position: absolute;
+            bottom: 40px;
+            left: 60px;
+            right: 60px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .slide {
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1: Title -->
+    <div class="slide title-slide">
+        <div class="logo">MS</div>
+        <h1>MindSpark</h1>
+        <p class="tagline">AI-Powered Learning Companions</p>
+        <p class="subtitle">Hackathon Submission 2026</p>
+    </div>
+
+    <!-- Slide 2: Problem & Solution -->
+    <div class="slide">
+        <h2>The Problem</h2>
+        <div class="content-box">
+            <p>Traditional online learning platforms suffer from:</p>
+            <ul style="margin-top: 20px;">
+                <li>One-size-fits-all content with no personalization</li>
+                <li>Lack of real-time interaction and feedback</li>
+                <li>No voice-based learning experiences</li>
+                <li>Static curricula that don't adapt to learners</li>
+            </ul>
+        </div>
+
+        <h2 style="margin-top: 40px;">Our Solution</h2>
+        <div class="content-box">
+            <p><strong>MindSpark transforms education</strong> through AI-powered study companions that:</p>
+            <ul style="margin-top: 20px;">
+                <li>Teach through natural voice conversation</li>
+                <li>Generate personalized 8-module curricula with AI</li>
+                <li>Track progress and adapt to individual learning pace</li>
+                <li>Make learning feel like talking to a knowledgeable friend</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Slide 3: Key Features -->
+    <div class="slide">
+        <h2>Key Features</h2>
+        <div class="features-grid">
+            <div class="feature">
+                <div class="feature-icon">🗣️</div>
+                <h4>Voice-Interactive Learning</h4>
+                <p>Speak to your AI tutor and receive spoken responses using Web Speech API</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📚</div>
+                <h4>AI-Generated Curricula</h4>
+                <p>Complete 8-module courses with quizzes created instantly by Gemini AI</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📊</div>
+                <h4>Smart Progress Tracking</h4>
+                <p>Cumulative stats across sessions unlock new modules automatically</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🎯</div>
+                <h4>Adaptive Teaching</h4>
+                <p>AI checks understanding before progressing, personalizing each lesson</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔓</div>
+                <h4>Gamified Unlocking</h4>
+                <p>Complete milestones (10+ messages, 1+ minute) to unlock advanced content</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">⏱️</div>
+                <h4>Session Management</h4>
+                <p>Real-time tracking with persistent progress across multiple sessions</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: Technology Stack -->
+    <div class="slide">
+        <h2>Technology Stack</h2>
+        
+        <h3 style="margin-top: 40px;">Frontend</h3>
+        <div class="tech-list">
+            <span class="tech-badge">React 19</span>
+            <span class="tech-badge">Vite</span>
+            <span class="tech-badge">Framer Motion</span>
+            <span class="tech-badge">Web Speech API</span>
+            <span class="tech-badge">React Router</span>
+        </div>
+
+        <h3 style="margin-top: 40px;">Backend & AI</h3>
+        <div class="tech-list">
+            <span class="tech-badge">Firebase Auth</span>
+            <span class="tech-badge">Firestore</span>
+            <span class="tech-badge">Google Gemini AI</span>
+            <span class="tech-badge">Generative AI API</span>
+        </div>
+
+        <h3 style="margin-top: 40px;">Key APIs</h3>
+        <div class="tech-list">
+            <span class="tech-badge">SpeechRecognition</span>
+            <span class="tech-badge">SpeechSynthesis</span>
+            <span class="tech-badge">Gemini 2.5 Flash</span>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-number">8</div>
+                <div class="stat-label">AI-Generated Modules</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">100%</div>
+                <div class="stat-label">Voice Interactive</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">Real-time</div>
+                <div class="stat-label">Progress Tracking</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 5: Architecture & Features -->
+    <div class="slide">
+        <h2>System Architecture</h2>
+        
+        <div class="content-box">
+            <h3>User Flow</h3>
+            <p>1. <strong>Create Companion</strong> → Choose topic, voice, teaching style<br>
+            2. <strong>AI Generates Curriculum</strong> → 8 modules with quizzes in seconds<br>
+            3. <strong>Start Session</strong> → Voice or text input with real-time transcription<br>
+            4. <strong>AI Responds</strong> → Natural language teaching with TTS<br>
+            5. <strong>Progress Tracked</strong> → Time & messages counted cumulatively<br>
+            6. <strong>Module Unlocked</strong> → Celebration modal when requirements met</p>
+        </div>
+
+        <div class="content-box" style="margin-top: 30px;">
+            <h3>Data Model</h3>
+            <p><strong>Companions:</strong> Store AI tutor configuration and curriculum<br>
+            <strong>Sessions:</strong> Track conversation history and timestamps<br>
+            <strong>moduleProgress:</strong> Cumulative time, messages, completion status</p>
+        </div>
+    </div>
+
+    <!-- Slide 6: Impact & Next Steps -->
+    <div class="slide">
+        <h2>Impact & Accomplishments</h2>
+        
+        <div class="content-box">
+            <h3>✅ What We Built</h3>
+            <ul>
+                <li>Fully functional voice-interactive AI tutoring platform</li>
+                <li>AI curriculum generator (8 modules with quizzes)</li>
+                <li>Smart unlock system with celebration modals</li>
+                <li>Persistent cross-session progress tracking</li>
+                <li>Responsive design (desktop & mobile)</li>
+            </ul>
+        </div>
+
+        <div class="content-box" style="margin-top: 30px;">
+            <h3>🚀 What's Next</h3>
+            <ul>
+                <li>Quiz system with scoring and badges</li>
+                <li>Multi-language support for global access</li>
+                <li>Study groups (collaborative learning)</li>
+                <li>Mobile app (React Native)</li>
+                <li>LMS integration for schools</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin-top: 50px;">
+            <h3 style="font-size: 32px; color: #ffffff;">Learning, Reimagined with AI</h3>
+            <p style="font-size: 20px; color: #94a3b8; margin-top: 15px;">Thank you for reviewing MindSpark!</p>
+        </div>
+    </div>
+
+</body>
+</html>
