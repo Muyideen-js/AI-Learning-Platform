@@ -56,20 +56,18 @@ export const generateAIResponse = async (
         const model = cachedModelName;
         const version = "v1beta";
 
-        console.log(`Generating with ${ model }...`);
+        console.log(`Generating with ${model}...`);
 
-        const systemPromptText = `You are ${ companion.name }, a ${
-            companion.style === "formal"
-            ? "professional and knowledgeable"
-            : "friendly and approachable"
-        } ${ companion.subject } tutor who teaches ${ companion.topic }.
-${
-            currentModule ? `
+        const systemPromptText = `You are ${companion.name}, a ${companion.style === "formal"
+                ? "professional and knowledgeable"
+                : "friendly and approachable"
+            } ${companion.subject} tutor who teaches ${companion.topic}.
+${currentModule ? `
 Current Focus: Module ${currentModule.id} - ${currentModule.title}
 ${currentModule.description}
 Focus your teaching on this specific module topic.
 ` : ''
-        }
+            }
 Speak naturally like a real human tutor.
 Be warm, engaging, and conversational.
 Avoid robotic or repetitive phrases.
@@ -109,72 +107,72 @@ Only proceed with the first lesson after they confirm.`;
             try {
                 response = await fetch(
                     `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${apiKey}`,
-        {
-            method: "POST",
-                headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestBody),
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(requestBody),
                     }
                 );
 
-if (response.ok) break;
+                if (response.ok) break;
 
-if (response.status === 429 || response.status === 503) {
-    console.warn(`Attempt ${attempt + 1} failed with ${response.status}. Retrying in 4s...`);
-    if (attempt === 0) await new Promise(r => setTimeout(r, 4000));
-    continue;
-}
+                if (response.status === 429 || response.status === 503) {
+                    console.warn(`Attempt ${attempt + 1} failed with ${response.status}. Retrying in 4s...`);
+                    if (attempt === 0) await new Promise(r => setTimeout(r, 4000));
+                    continue;
+                }
 
-break;
+                break;
 
             } catch (netErr) {
-    console.warn("Network error during generation:", netErr);
-    if (attempt === 0) await new Promise(r => setTimeout(r, 4000));
-}
+                console.warn("Network error during generation:", netErr);
+                if (attempt === 0) await new Promise(r => setTimeout(r, 4000));
+            }
         }
 
-if (!response || !response.ok) {
-    if (response && response.status === 404) {
-        cachedModelName = null;
-        return "I lost connection to my model. Please try again.";
-    }
+        if (!response || !response.ok) {
+            if (response && response.status === 404) {
+                cachedModelName = null;
+                return "I lost connection to my model. Please try again.";
+            }
 
-    if (response && response.status === 429) {
-        return "I'm receiving too many messages right now (Rate Limit). Please wait a few seconds so I can catch up.";
-    }
+            if (response && response.status === 429) {
+                return "I'm receiving too many messages right now (Rate Limit). Please wait a few seconds so I can catch up.";
+            }
 
-    const data = (response && await response.json().catch(() => ({}))) || {};
-    console.error("Gemini Generation Error:", data);
-    throw new Error(`API Error ${response ? response.status : 'Unknown'}`);
-}
+            const data = (response && await response.json().catch(() => ({}))) || {};
+            console.error("Gemini Generation Error:", data);
+            throw new Error(`API Error ${response ? response.status : 'Unknown'}`);
+        }
 
-const data = await response.json();
-const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        const data = await response.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
-if (!text) throw new Error("Empty Gemini response");
+        if (!text) throw new Error("Empty Gemini response");
 
-// Simulated streaming
-if (onStreamChunk) {
-    for (const word of text.split(" ")) {
-        onStreamChunk(word + " ");
-        await new Promise(r => setTimeout(r, 20));
-    }
-}
+        // Simulated streaming
+        if (onStreamChunk) {
+            for (const word of text.split(" ")) {
+                onStreamChunk(word + " ");
+                await new Promise(r => setTimeout(r, 20));
+            }
+        }
 
-return text;
+        return text;
 
     } catch (err) {
-    console.error("AI Service Error:", err);
-    if (err.message === "ACCESS_DENIED") {
-        return `Access Denied. 
+        console.error("AI Service Error:", err);
+        if (err.message === "ACCESS_DENIED") {
+            return `Access Denied. 
       
 Your API Key does not have the 'Generative Language API' enabled.
 Please check your Google Cloud Console to enable it.`;
+        }
+        if (err.message === "NO_MODELS_FOUND") {
+            return "No compatible AI models found for your API key.";
+        }
+        return "I'm having trouble connecting to my service right now.";
     }
-    if (err.message === "NO_MODELS_FOUND") {
-        return "No compatible AI models found for your API key.";
-    }
-    return "I'm having trouble connecting to my service right now.";
-}
 };
 
 /**
@@ -229,13 +227,21 @@ Description: ${description}
 
 Generate EXACTLY ${numberOfModules} progressive modules with quizzes.
 
+IMPORTANT: Each module must have a UNIQUE, SPECIFIC title that describes what will be learned in that module. DO NOT use generic titles like "Module 1: Module 1" or "Learning html basics - Part 1".
+
+Example of GOOD module titles for "HTML Basics":
+- "Introduction to HTML Structure and Tags"
+- "Working with Text, Links, and Images"
+- "Creating Forms and Input Elements"
+- "Semantic HTML and Accessibility"
+
 Return ONLY valid JSON (no markdown formatting):
 {
   "modules": [
     {
       "id": 1,
-      "title": "Module Title",
-      "description": "What students learn",
+      "title": "Specific descriptive title for this module",
+      "description": "Clear explanation of what students will learn in this module",
       "quiz": {
         "questions": [
           {
@@ -252,9 +258,10 @@ Return ONLY valid JSON (no markdown formatting):
 
 Requirements:
 - ${numberOfModules} modules total
-- Each module: clear title, brief description
+- Each module: UNIQUE, SPECIFIC title (not generic), detailed description
 - Each quiz: 5 multiple-choice questions
-- Progressive difficulty from basics to advanced`;
+- Progressive difficulty from basics to advanced
+- Titles should clearly indicate the specific topic covered in each module`;
 
         const requestBody = {
             contents: [

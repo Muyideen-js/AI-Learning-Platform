@@ -429,24 +429,22 @@ const CompanionSession = () => {
           lastAccessedAt: new Date()
         });
       } else {
-        // Create new session for this module
+        // Create new session
         const sessionData = {
           userId: currentUser.uid,
           companionId: id,
           companionName: companion.name,
-          moduleId: currentModuleId, // NEW: Track which module this session belongs to
+          moduleId: currentModuleId,
           startedAt: new Date(),
-          lastAccessedAt: new Date(),
           transcript: [],
-          duration: 0,
-          moduleProgress: [],
-          currentModuleId: currentModuleId
+          timeSpent: 0,
+          messageCount: 0
         };
+        
         const docRef = await addDoc(collection(db, 'sessions'), sessionData);
         setSessionId(docRef.id);
-        setSessionStarted(true);
         setModuleStartTime(Date.now());
-        
+        setSessionStarted(true);
         // Start with text mode by default
         setMode('text');
       }
@@ -1328,6 +1326,14 @@ const CompanionSession = () => {
           </>
         )}
       </div>
+      {toasts.map(toast => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => hideToast(toast.id)}
+        />
+      ))}
     </div>
   );
 };
