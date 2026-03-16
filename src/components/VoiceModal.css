@@ -1,0 +1,344 @@
+/* ==========================================
+   VOICE MODAL — Fullscreen (Monochrome, Flat)
+   Black bg, white orb, sharp corners, Inter
+   ========================================== */
+
+.voice-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #000000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: vmFadeIn 0.3s ease;
+}
+
+@keyframes vmFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.voice-modal {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    gap: 40px;
+    position: relative;
+    font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* --- Header --- */
+.voice-modal-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: absolute;
+    top: 60px;
+}
+
+.voice-modal-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.voice-modal-state {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+}
+
+/* ==========================================
+   ORB — Flat 2D circle, white on black
+   ========================================== */
+.voice-orb-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 200px;
+    height: 200px;
+    position: relative;
+}
+
+.voice-orb {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.2s ease;
+    will-change: transform, box-shadow;
+}
+
+/* Remove the 3D inner glow */
+.voice-orb-inner {
+    display: none;
+}
+
+/* Rings — subtle expanding circles */
+.voice-orb-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    pointer-events: none;
+}
+
+.voice-orb-ring--1 {
+    inset: -20px;
+    animation: orbRingPulse 3s ease-in-out infinite;
+}
+
+.voice-orb-ring--2 {
+    inset: -42px;
+    animation: orbRingPulse 3s ease-in-out infinite 1.2s;
+    border-color: rgba(255, 255, 255, 0.03);
+}
+
+@keyframes orbRingPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.4;
+    }
+
+    50% {
+        transform: scale(1.04);
+        opacity: 0.8;
+    }
+}
+
+/* --- Connecting --- */
+.voice-orb--connecting {
+    animation: orbConnecting 1.8s ease-in-out infinite;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+@keyframes orbConnecting {
+
+    0%,
+    100% {
+        transform: scale(0.94);
+        opacity: 0.35;
+    }
+
+    50% {
+        transform: scale(1.02);
+        opacity: 0.6;
+    }
+}
+
+/* --- Listening --- */
+.voice-orb--listening {
+    animation: orbListening 2.5s ease-in-out infinite;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+@keyframes orbListening {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.04);
+    }
+}
+
+/* --- Speaking --- */
+.voice-orb--speaking {
+    animation: none;
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* ==========================================
+   CAPTIONS
+   ========================================== */
+.voice-captions {
+    max-width: 480px;
+    width: 100%;
+    max-height: 80px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0 20px;
+    text-align: center;
+    scrollbar-width: none;
+}
+
+.voice-captions::-webkit-scrollbar {
+    display: none;
+}
+
+.voice-caption-hint {
+    color: rgba(255, 255, 255, 0.2);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 0;
+}
+
+.voice-caption {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    animation: captionSlideIn 0.2s ease;
+}
+
+.voice-caption--user {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.voice-caption--ai {
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
+}
+
+@keyframes captionSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==========================================
+   CONTROLS
+   ========================================== */
+.voice-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: absolute;
+    bottom: 60px;
+}
+
+.voice-ctrl-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 10px 14px;
+}
+
+.voice-ctrl-btn span {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-family: 'Inter', sans-serif;
+}
+
+.voice-ctrl-btn--mute {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.voice-ctrl-btn--mute:hover {
+    color: #ffffff;
+}
+
+.voice-ctrl-btn--end {
+    color: #ffffff;
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    width: 58px;
+    height: 58px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.voice-ctrl-btn--end span {
+    font-size: 8px;
+}
+
+.voice-ctrl-btn--end:hover {
+    border-color: #ffffff;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.voice-ctrl-btn--text {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.voice-ctrl-btn--text:hover {
+    color: #ffffff;
+}
+
+.voice-ctrl-btn--save {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.voice-ctrl-btn--save:hover {
+    color: #ffffff;
+}
+
+/* ==========================================
+   MOBILE
+   ========================================== */
+@media (max-width: 768px) {
+    .voice-modal-header {
+        top: 40px;
+    }
+
+    .voice-modal-name {
+        font-size: 12px;
+    }
+
+    .voice-orb-container {
+        width: 160px;
+        height: 160px;
+    }
+
+    .voice-orb {
+        width: 96px;
+        height: 96px;
+    }
+
+    .voice-controls {
+        bottom: 40px;
+        gap: 14px;
+    }
+
+    .voice-ctrl-btn--end {
+        width: 50px;
+        height: 50px;
+    }
+
+    .voice-captions {
+        max-width: 90vw;
+    }
+
+    .voice-caption {
+        font-size: 12px;
+    }
+}

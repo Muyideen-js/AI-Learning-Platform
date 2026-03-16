@@ -59,8 +59,8 @@ export const generateAIResponse = async (
         console.log(`Generating with ${model}...`);
 
         const systemPromptText = `You are ${companion.name}, a ${companion.style === "formal"
-                ? "professional and knowledgeable"
-                : "friendly and approachable"
+            ? "professional and knowledgeable"
+            : "friendly and approachable"
             } ${companion.subject} tutor who teaches ${companion.topic}.
 ${currentModule ? `
 Current Focus: Module ${currentModule.id} - ${currentModule.title}
@@ -291,9 +291,12 @@ Requirements:
 
         if (!text) throw new Error("Empty response");
 
-        // Parse JSON
-        const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        const curriculum = JSON.parse(cleanedText);
+        // Parse JSON using Regex to bypass markdown and conversational wrap
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error("Could not find JSON object in response");
+        }
+        const curriculum = JSON.parse(jsonMatch[0]);
 
         if (!curriculum.modules || !Array.isArray(curriculum.modules)) {
             throw new Error('Invalid curriculum structure');

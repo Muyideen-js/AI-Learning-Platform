@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateAIResponse as getAIResponse } from '../lib/gemini';
-import { ArrowLeft, Mic, MessageSquare, Square, Crown, Volume2, Send, Paperclip, MicOff, Copy, RotateCcw, Pause, StopCircle, ArrowDown } from 'lucide-react';
+import { ArrowLeft, Mic, Crown, Volume2, Send, Paperclip, Copy, RotateCcw, Pause, StopCircle, ArrowDown } from 'lucide-react';
 import ChatRobot from '../components/ChatRobot';
+import VoiceModal from '../components/VoiceModal';
 import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
+import useVapi from '../hooks/useVapi';
 import ReactMarkdown from 'react-markdown';
 import './CompanionSession.css';
 
@@ -18,21 +20,18 @@ const CompanionSession = () => {
   const [companion, setCompanion] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sessionStarted, setSessionStarted] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [mode, setMode] = useState('text'); // 'text' or 'audio'
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [transcript, setTranscript] = useState([]);
   const [sessionId, setSessionId] = useState(null);
   const [sessionDuration, setSessionDuration] = useState(0);
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false); // Track if AI is speaking
+  const [isSpeaking, setIsSpeaking] = useState(false); // Track if AI is speaking (TTS per-message)
   const [isPaused, setIsPaused] = useState(false); // Track if TTS is paused
   const [currentSpeakingMessageId, setCurrentSpeakingMessageId] = useState(null); // Track which message is being read
   const [showScrollButton, setShowScrollButton] = useState(false); // Show scroll to bottom button
   const transcriptEndRef = useRef(null);
   const transcriptAreaRef = useRef(null);
-  const recognitionRef = useRef(null);
-  const silenceTimeoutRef = useRef(null);
   const messageIdCounter = useRef(0);
   const { toasts, showToast, hideToast } = useToast();
   
@@ -132,179 +131,26 @@ const CompanionSession = () => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [transcript]);
 
-  // Initialize Web Speech API for voice recognition
-  const initializeSpeechRecognition = () => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-      recognition.maxAlternatives = 1;
-
-      let finalTranscript = '';
-      let isProcessingSpeech = false;
-
-      recognition.onstart = () => {
-        console.log('Speech recognition started');
-        setIsRecording(true);
-      };
-
-      recognition.onresult = async (event) => {
-        // Ignore results if AI is speaking and show alert
-        if (isSpeaking || isProcessing) {
-          console.log('Ignoring speech input while AI is generating/speaking');
-          // Show custom alert
-          const alertDiv = document.createElement('div');
-          alertDiv.textContent = '🤖 AI is responding... Please wait!';
-          alertDiv.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: var(--text-primary);
-            color: var(--bg-primary);
-            padding: 20px 40px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            z-index: 9999;
-            animation: fadeInOut 2s ease;
-          `;
-          document.body.appendChild(alertDiv);
-          setTimeout(() => alertDiv.remove(), 2000);
-          return;
-        }
-        
-        let interimTranscript = '';
-        
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript + ' ';
-          } else {
-            interimTranscript += transcript;
-          }
-        }
-
-        // Only process final results
-        if (finalTranscript.trim() && !isProcessingSpeech && !isSpeaking) {
-          isProcessingSpeech = true;
-          const userMessage = finalTranscript.trim();
-          finalTranscript = '';
-          
-          addMessage(userMessage, 'user');
-          setIsProcessing(true);
-          
-          // Generate AI response with streaming for real-time
-          const conversationHistory = transcript.map(msg => ({
-            role: msg.sender === 'user' ? 'user' : 'assistant',
-            content: msg.text
-          }));
-          
-          // Add placeholder message for streaming
-          const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          addMessage('', 'ai', messageId);
-          
-          let fullResponse = '';
-          try {
-            // Get current module for context
-            const currentModule = companion.curriculum?.find(m => m.id === currentModuleId);
-            
-            const aiResponse = await getAIResponse(
-              userMessage, 
-              companion, 
-              conversationHistory,
-              (chunk) => {
-                // Update message in real-time as chunks arrive
-                fullResponse += chunk;
-                updateMessage(messageId, fullResponse);
-                // Speak chunks as they arrive
-                speakText(fullResponse, true);
-              },
-              currentModule
-            );
-            
-            // Ensure final message is set
-            if (fullResponse !== aiResponse) {
-              updateMessage(messageId, aiResponse);
-            }
-            
-            // Speak the response
-            speakText(aiResponse);
-          } catch (error) {
-            console.error('Error generating response:', error);
-            updateMessage(messageId, `Sorry, I encountered an error. Could you try asking about ${companion.topic} again?`);
-          }
-          
-          setIsProcessing(false);
-          isProcessingSpeech = false;
-        }
-      };
-
-      recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        setIsRecording(false);
-        
-        // Don't restart on certain errors
-        if (event.error === 'no-speech') {
-          // Just wait, don't restart immediately
-          return;
-        } else if (event.error === 'aborted') {
-          return;
-        } else if (event.error === 'not-allowed') {
-          alert('Microphone access denied. Please enable microphone permissions.');
-          setMode('text');
-        }
-      };
-
-      recognition.onend = () => {
-        setIsRecording(false);
-        // Don't auto-restart - user must explicitly toggle audio mode
-        // This prevents unwanted activation
-      };
-
-      recognitionRef.current = recognition;
-      return recognition;
-    }
-    return null;
-  };
-
-  // Helper function to get the best available voice
+  // Helper function to get the best available voice (for per-message read-aloud)
   const getBestVoice = () => {
     const voices = window.speechSynthesis.getVoices();
-    
-    // Priority order for high-quality voices
     const priorities = [
-      // Microsoft Edge voices (best quality on Windows)
       { pattern: /Microsoft.*Aria.*Neural/i, score: 100 },
       { pattern: /Microsoft.*Guy.*Neural/i, score: 99 },
       { pattern: /Microsoft.*Jenny.*Neural/i, score: 98 },
-      
-      // Google voices (excellent quality)
       { pattern: /Google.*US.*English/i, score: 95 },
       { pattern: /Google.*UK.*English/i, score: 94 },
-      
-      // Apple voices (macOS)
       { pattern: /Samantha/i, score: 90 },
       { pattern: /Alex/i, score: 89 },
-      
-      // Enhanced/Premium voices
       { pattern: /Enhanced/i, score: 85 },
       { pattern: /Premium/i, score: 84 },
       { pattern: /Natural/i, score: 83 },
-      
-      // Standard Microsoft voices
       { pattern: /Microsoft.*Zira/i, score: 75 },
       { pattern: /Microsoft.*David/i, score: 74 },
     ];
-    
-    // Filter for US English voices only
     const usEnglishVoices = voices.filter(v => 
       v.lang.startsWith('en-US') || v.lang.startsWith('en_US')
     );
-    
-    // Score each voice
     const scoredVoices = usEnglishVoices.map(voice => {
       let score = 0;
       for (const priority of priorities) {
@@ -315,88 +161,102 @@ const CompanionSession = () => {
       }
       return { voice, score };
     });
-    
-    // Sort by score and return best
     scoredVoices.sort((a, b) => b.score - a.score);
-    const bestVoice = scoredVoices[0]?.voice;
-    
-    if (bestVoice) {
-      console.log('🎤 Selected voice:', bestVoice.name, `(score: ${scoredVoices[0].score})`);
-    }
-    
-    return bestVoice;
+    return scoredVoices[0]?.voice;
   };
 
   // Helper function to strip markdown from text for TTS
   const stripMarkdown = (text) => {
     return text
-      .replace(/\*\*(.+?)\*\*/g, '$1')  // Remove bold **text**
-      .replace(/\*(.+?)\*/g, '$1')      // Remove italic *text*
-      .replace(/`(.+?)`/g, '$1')        // Remove code `text`
-      .replace(/#+\s/g, '')             // Remove headers #
-      .replace(/[-*]\s/g, '')           // Remove bullet points - or *
-      .replace(/\[(.+?)\]\(.+?\)/g, '$1') // Remove links [text](url)
-      .replace(/!\[.+?\]\(.+?\)/g, '')  // Remove images
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1')
+      .replace(/`(.+?)`/g, '$1')
+      .replace(/#+\s/g, '')
+      .replace(/[-*]\s/g, '')
+      .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+      .replace(/!\[.+?\]\(.+?\)/g, '')
       .trim();
   };
 
-  // Text-to-speech using browser with best voice
-  const speakText = (text, isStreaming = false) => {
-    if ('speechSynthesis' in window && mode === 'audio') {
-      // Strip markdown before speaking
-      const cleanText = stripMarkdown(text);
+  // --- VAPI Voice Tutor Integration ---
+  const handleVoiceError = useCallback((errorMsg) => {
+    const msg = typeof errorMsg === 'string' ? errorMsg : 'Voice connection error';
+    showToast(msg);
+  }, []);
+
+  const handleVoiceCallEnd = useCallback(() => {
+    setShowVoiceModal(false);
+    showToast('Voice tutor session ended');
+  }, []);
+
+  const {
+    isCallActive,
+    isConnecting,
+    isSpeaking: isVapiSpeaking,
+    isMuted,
+    volumeLevel,
+    voiceTranscript,
+    error: vapiError,
+    startCall,
+    stopCall,
+    toggleMute,
+    clearVoiceTranscript,
+  } = useVapi({
+    onError: handleVoiceError,
+    onCallEnd: handleVoiceCallEnd,
+  });
+
+  // Open voice modal and start VAPI call
+  const handleOpenVoiceModal = async () => {
+    setShowVoiceModal(true);
+    await startCall();
+  };
+
+  // End voice call and close modal
+  const handleEndVoiceCall = () => {
+    stopCall();
+    setShowVoiceModal(false);
+  };
+
+  // Save voice transcript to chat (explicit user action)
+  const handleSaveVoiceTranscript = () => {
+    if (voiceTranscript.length === 0) return;
+    
+    // Create new messages array
+    const newMessages = voiceTranscript.map(entry => ({
+      id: `vt-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      text: entry.text,
+      sender: entry.role === 'user' ? 'user' : 'ai',
+      timestamp: new Date()
+    }));
+
+    // Perform a single bulk update to React state and Firestore
+    // to prevent rapid successive updateDoc calls from cancelling out
+    setTranscript(prev => {
+      const updated = [...prev, ...newMessages];
       
-      // Skip streaming for now
-      if (isStreaming) return;
-      
-      // Stop recognition while AI speaks
-      const wasRecording = isRecording;
-      if (recognitionRef.current && isRecording) {
-        recognitionRef.current.stop();
+      if (sessionId) {
+        updateDoc(doc(db, 'sessions', sessionId), {
+          transcript: updated,
+          lastAccessedAt: new Date()
+        }).catch(err => console.error('Error saving voice transcript:', err));
       }
       
-      window.speechSynthesis.cancel(); // Cancel any ongoing speech
-      
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      
-      // Optimized settings for natural, human-like speech
-      utterance.rate = 1.15; // Natural conversational speed
-      utterance.pitch = 1.0; // Neutral pitch
-      utterance.volume = 1;
-      utterance.lang = 'en-US';
-      
-      // Use best available voice
-      const bestVoice = getBestVoice();
-      if (bestVoice) {
-        utterance.voice = bestVoice;
-      }
-      
-      utterance.onstart = () => {
-        setIsProcessing(true);
-        setIsSpeaking(true);
-      };
-      
-      utterance.onend = () => {
-        setIsProcessing(false);
-        
-        // Restart speech recognition after AI finishes speaking
-        if (wasRecording && mode === 'audio') {
-          setTimeout(() => {
-            setIsSpeaking(false);
-            const recognition = initializeSpeechRecognition();
-            if (recognition) {
-              try {
-                recognition.start();
-              } catch (e) {
-                console.log('Recognition already started or error:', e);
-              }
-            }
-          }, 3000);
-        }
-      };
-      
-      window.speechSynthesis.speak(utterance);
+      return updated;
+    });
+
+    const userMessageCount = newMessages.filter(m => m.sender === 'user').length;
+    if (userMessageCount > 0) {
+      setModuleMessageCount(prev => prev + userMessageCount);
     }
+    
+    clearVoiceTranscript();
+    showToast('Voice transcript saved to chat');
+  };
+
+  // Switch from voice to text mode
+  const handleSwitchToText = () => {
+    handleEndVoiceCall();
   };
 
 
@@ -422,7 +282,6 @@ const CompanionSession = () => {
         setTranscript(sessionData.transcript || []);
         setModuleStartTime(Date.now());
         setSessionStarted(true);
-        setMode('text');
         
         // Update last accessed
         await updateDoc(doc(db, 'sessions', existingSession.id), {
@@ -445,8 +304,6 @@ const CompanionSession = () => {
         setSessionId(docRef.id);
         setModuleStartTime(Date.now());
         setSessionStarted(true);
-        // Start with text mode by default
-        setMode('text');
       }
     } catch (error) {
       console.error('Error starting/loading session:', error);
@@ -592,13 +449,12 @@ const CompanionSession = () => {
 
     const endSession = async () => {
     try {
-      // Stop speech recognition
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-        recognitionRef.current = null;
+      // Stop VAPI call if active
+      if (isCallActive) {
+        stopCall();
       }
       
-      // Stop any ongoing speech
+      // Stop any ongoing speech (per-message read aloud)
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
@@ -649,7 +505,6 @@ const CompanionSession = () => {
       }
       
       setSessionStarted(false);
-      setIsRecording(false);
       setMode('text');
       navigate('/my-journey');
     } catch (error) {
@@ -657,36 +512,7 @@ const CompanionSession = () => {
     }
   };
 
-  const toggleAudioMode = async () => {
-    if (isRecording) {
-      // Stop recording
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      // State update handled by onend
-    } else {
-      // Start recording
-      try {
-        // Switch to audio mode if not already
-        if (mode === 'text') {
-          setMode('audio');
-        }
 
-        // Request microphone permission first
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        const recognition = initializeSpeechRecognition();
-        if (recognition) {
-          recognition.start();
-        } else {
-          alert('Speech recognition is not supported in your browser. Please use Chrome or Edge.');
-        }
-      } catch (error) {
-        console.error('Microphone access denied:', error);
-        alert('Microphone access is required for audio mode. Please allow microphone permissions.');
-      }
-    }
-  };
 
   const handleSendMessage = async () => {
     if (!inputText.trim() || isProcessing) return;
@@ -729,11 +555,6 @@ const CompanionSession = () => {
       }
       
       setIsProcessing(false);
-      
-      // Speak response if in audio mode
-      if (mode === 'audio') {
-        speakText(aiResponse);
-      }
     } catch (error) {
       console.error('Error generating response:', error);
       updateMessage(messageId, `Sorry, I encountered an error. Could you try asking about ${companion.topic} again?`);
@@ -1277,63 +1098,51 @@ const CompanionSession = () => {
             {/* Input Area */}
             <div className="chat-input-area">
               <div className="input-container">
-                {mode === 'text' ? (
-                  <>
-                    <div className="input-wrapper">
-                      <button className="input-btn upload">
-                        <Paperclip size={16} />
-                      </button>
-                      <textarea
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        placeholder="Type your message..."
-                        className="input-field"
-                        disabled={isProcessing}
-                        rows={1}
-                      />
-                    </div>
-                    <button onClick={() => setMode('audio')} className="input-btn">
-                      <Volume2 size={16} />
+                  <div className="input-wrapper">
+                    <button className="input-btn upload">
+                      <Paperclip size={16} />
                     </button>
-                    <button
-                      onClick={handleSendMessage}
-                      disabled={!inputText.trim() || isProcessing}
-                      className="input-btn send"
-                    >
-                      <Send size={16} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => setMode('text')} className="input-btn">
-                      <MessageSquare size={16} />
-                    </button>
-                    <div className="audio-status">
-                      {isRecording && <div className="pulse-dot"></div>}
-                      <span>{isRecording ? 'Recording...' : 'Click mic to speak'}</span>
-                    </div>
-                    <button
-                      onClick={toggleAudioMode}
-                      className={`input-btn ${isRecording ? 'recording' : ''}`}
-                    >
-                      {isRecording ? <Square size={16} /> : <Mic size={16} />}
-                    </button>
-                  </>
-                )}
+                    <textarea
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Type your message..."
+                      className="input-field"
+                      disabled={isProcessing}
+                      rows={1}
+                    />
+                  </div>
+                  <button onClick={handleOpenVoiceModal} className="input-btn" title="Start Voice Tutor">
+                    <Mic size={16} />
+                  </button>
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!inputText.trim() || isProcessing}
+                    className="input-btn send"
+                  >
+                    <Send size={16} />
+                  </button>
               </div>
             </div>
           </>
         )}
       </div>
-      {toasts.map(toast => (
-        <Toast
-          key={toast.id}
-          message={toast.message}
-          type={toast.type}
-          onClose={() => hideToast(toast.id)}
-        />
-      ))}
+      {/* Voice Modal — fullscreen orb */}
+      <VoiceModal
+        isOpen={showVoiceModal}
+        isConnecting={isConnecting}
+        isCallActive={isCallActive}
+        isSpeaking={isVapiSpeaking}
+        isMuted={isMuted}
+        volumeLevel={volumeLevel}
+        voiceTranscript={voiceTranscript}
+        companionName={companion?.name || 'Tutor'}
+        onToggleMute={toggleMute}
+        onEndCall={handleEndVoiceCall}
+        onSwitchToText={handleSwitchToText}
+        onSaveTranscript={handleSaveVoiceTranscript}
+      />
+      <Toast toasts={toasts} />
     </div>
   );
 };

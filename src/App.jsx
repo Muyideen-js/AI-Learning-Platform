@@ -10,6 +10,7 @@ import CreateCompanion from './pages/CreateCompanion';
 import CompanionSession from './pages/CompanionSession';
 import MyJourney from './pages/MyJourney';
 import Subscription from './pages/Subscription';
+import NotFound from './pages/NotFound';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
@@ -62,6 +63,7 @@ function AppContent() {
               </PrivateRoute>
             }
           />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
       {showFooter && <Footer />}

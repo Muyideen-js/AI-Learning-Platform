@@ -437,16 +437,166 @@
     color: white;
 }
 
-/* Audio Mode */
-.audio-status {
+/* ==========================================
+   VOICE TUTOR PANEL
+   ========================================== */
+
+.voice-tutor-panel {
     flex: 1;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    padding: 4px 0;
+}
+
+/* Voice Visualizer - animated bars */
+.voice-visualizer {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 32px;
+    padding: 0 8px;
+}
+
+.voice-bar {
+    width: 4px;
+    min-height: 4px;
+    background: var(--text-primary);
+    transition: height 0.15s ease;
+    animation: voiceBarPulse 1.2s ease-in-out infinite alternate;
+}
+
+.voice-bar:nth-child(1) { animation-delay: 0s; }
+.voice-bar:nth-child(2) { animation-delay: 0.15s; }
+.voice-bar:nth-child(3) { animation-delay: 0.3s; }
+.voice-bar:nth-child(4) { animation-delay: 0.45s; }
+.voice-bar:nth-child(5) { animation-delay: 0.6s; }
+
+@keyframes voiceBarPulse {
+    0% { transform: scaleY(0.4); opacity: 0.6; }
+    100% { transform: scaleY(1); opacity: 1; }
+}
+
+/* Voice Status Text */
+.voice-status {
+    flex: 1;
     font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* Start Call Button */
+.voice-btn-call {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border: 2px solid var(--text-primary);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.voice-btn-call:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.voice-btn-call:active {
+    transform: translateY(0);
+}
+
+/* Mute Button */
+.voice-btn-mute {
+    padding: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.voice-btn-mute:hover {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+}
+
+.voice-btn-mute.muted {
+    background: #ff4444;
+    border-color: #ff4444;
+    color: white;
+}
+
+/* End Call Button */
+.voice-btn-end {
+    padding: 8px 14px;
+    background: transparent;
+    border: 2px solid #ff4444;
+    color: #ff4444;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.voice-btn-end:hover {
+    background: #ff4444;
+    color: white;
+    transform: translateY(-1px);
+}
+
+/* Connecting State */
+.voice-connecting {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--text-secondary);
 }
 
+.connecting-pulse {
+    width: 10px;
+    height: 10px;
+    background: var(--text-primary);
+    border-radius: 50%;
+    animation: connectPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes connectPulse {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* Voice Error */
+.voice-error {
+    font-size: 11px;
+    color: #ff4444;
+    padding: 4px 8px;
+    border: 1px solid #ff4444;
+    background: rgba(255, 68, 68, 0.05);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Pulse dot (still used for other UI) */
 .pulse-dot {
     width: 8px;
     height: 8px;
@@ -456,15 +606,8 @@
 }
 
 @keyframes pulse {
-
-    0%,
-    100% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.3;
-    }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
 }
 
 /* Empty State */
@@ -922,8 +1065,6 @@
         margin-top: 4px;
     }
 
-    right: 0;
-    left: 0;
 }
 
 .curriculum-header {
@@ -958,7 +1099,7 @@
 .module-status {
     font-size: 16px;
 }
-}
+
 
 /* Tablet view */
 @media (min-width: 769px) and (max-width: 1024px) {
@@ -1096,7 +1237,7 @@
 .module-description {
     font-size: 9px;
 }
-}
+
 
 /* Scroll to Bottom Button */
 .scroll-to-bottom {
