@@ -5,7 +5,8 @@ export const generateAIResponse = async (
     companion,
     conversationHistory = [],
     onStreamChunk = null,
-    currentModule = null
+    currentModule = null,
+    fileData = null
 ) => {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -82,17 +83,38 @@ If this is the VERY FIRST message of the session(conversation history is empty),
         "Welcome! Are you ready to start the course on ${companion.topic}? Say 'Start' when you are ready!"
 Only proceed with the first lesson after they confirm.`;
 
+        let userParts = [{ text: userMessage || 'Analyze this file' }];
+        
+        if (fileData) {
+            if (fileData.type === 'image') {
+                // Gemini Vision: pass base64 directly
+                userParts.unshift({
+                    inlineData: {
+                        data: fileData.base64,
+                        mimeType: fileData.mimeType
+                    }
+                });
+            } else if (fileData.type === 'text') {
+                // Text files: inject raw text directly into the prompt
+                userParts[0].text = `[Attached File: ${fileData.name}]\n\nFile Content:\n\`\`\`\n${fileData.content}\n\`\`\`\n\nUser Question:\n${userMessage || 'Please analyze this file.'}`;
+            }
+        }
+
         const requestBody = {
             systemInstruction: {
                 role: "system",
                 parts: [{ text: systemPromptText }],
             },
             contents: [
-                ...conversationHistory.slice(-10).map(msg => ({
-                    role: msg.role === "assistant" ? "model" : "user",
-                    parts: [{ text: msg.content }],
-                })),
-                { role: "user", parts: [{ text: userMessage }] },
+                ...conversationHistory.slice(-10).map(msg => {
+                    // Safely extract string content from history just in case object was saved
+                    const safeContent = typeof msg.content === 'string' ? msg.content : (msg.content?.text || JSON.stringify(msg.content));
+                    return {
+                        role: msg.role === "assistant" ? "model" : "user",
+                        parts: [{ text: safeContent }],
+                    };
+                }),
+                { role: "user", parts: userParts },
             ],
             generationConfig: {
                 temperature: companion.style === "formal" ? 0.85 : 0.9,

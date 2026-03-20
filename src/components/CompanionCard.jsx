@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Bookmark, BookmarkCheck, Trash2 } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Trash2, Star } from 'lucide-react';
 import { doc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import DeleteConfirmModal from './DeleteConfirmModal';
@@ -106,6 +106,12 @@ const CompanionCard = ({ companion }) => {
             <span className="companion-card-style">
               {companion.style === 'formal' ? 'Formal' : 'Casual'}
             </span>
+            {companion.reviewCount > 0 && (
+              <span className="companion-card-rating" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '600', color: '#ffc107', background: 'rgba(255, 193, 7, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                <Star size={10} fill="currentColor" />
+                {companion.averageRating}
+              </span>
+            )}
           </div>
         </div>
       </Link>

@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc, updateDoc, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, updateDoc, setDoc, increment, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateAIResponse as getAIResponse } from '../lib/gemini';
-import { ArrowLeft, Mic, Crown, Volume2, Send, Paperclip, Copy, RotateCcw, Pause, StopCircle, ArrowDown } from 'lucide-react';
+import { ArrowLeft, Mic, Crown, Volume2, Send, Paperclip, Copy, RotateCcw, Pause, StopCircle, ArrowDown, X, FileText, Image as ImageIcon, Star } from 'lucide-react';
 import ChatRobot from '../components/ChatRobot';
 import VoiceModal from '../components/VoiceModal';
 import QuizModal from '../components/QuizModal';
@@ -13,6 +13,7 @@ import { useToast } from '../hooks/useToast';
 import useVapi from '../hooks/useVapi';
 import ReactMarkdown from 'react-markdown';
 import CodeSandbox from '../components/CodeSandbox';
+import RatingModal from '../components/RatingModal';
 import './CompanionSession.css';
 
 const CompanionSession = () => {
@@ -32,11 +33,15 @@ const CompanionSession = () => {
   const [isPaused, setIsPaused] = useState(false); // Track if TTS is paused
   const [currentSpeakingMessageId, setCurrentSpeakingMessageId] = useState(null); // Track which message is being read
   const [showScrollButton, setShowScrollButton] = useState(false); // Show scroll to bottom button
-  const transcriptEndRef = useRef(null);
   const transcriptAreaRef = useRef(null);
   const messageIdCounter = useRef(0);
+  const fileInputRef = useRef(null);
   const { toasts, showToast, hideToast } = useToast();
   
+  // File Upload State
+  const [attachedFile, setAttachedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   // Curriculum state
   const [currentModuleId, setCurrentModuleId] = useState(1);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -53,6 +58,14 @@ const CompanionSession = () => {
   const [quizModuleId, setQuizModuleId] = useState(null);
   const [quizScores, setQuizScores] = useState({}); // { moduleId: score }
 
+  // Rating state
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [userRating, setUserRating] = useState(null);
+  const [companionRating, setCompanionRating] = useState({ average: 0, count: 0 });
+
+  const [activeSidebarTab, setActiveSidebarTab] = useState('curriculum');
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
 
   useEffect(() => {
     const fetchCompanion = async () => {
@@ -86,6 +99,35 @@ const CompanionSession = () => {
 
     fetchCompanion();
   }, [id, navigate]);
+
+  // Load reviews/ratings
+  useEffect(() => {
+    const fetchRatings = async () => {
+      if (!id || !currentUser) return;
+      try {
+        const reviewsRef = collection(db, 'companions', id, 'reviews');
+        const querySnapshot = await getDocs(reviewsRef);
+        let total = 0;
+        let count = 0;
+        
+        querySnapshot.forEach(doc => {
+          const data = doc.data();
+          total += data.rating || 0;
+          count += 1;
+          if (data.userId === currentUser.uid) {
+            setUserRating(data.rating);
+          }
+        });
+        
+        if (count > 0) {
+          setCompanionRating({ average: (total / count).toFixed(1), count });
+        }
+      } catch (err) {
+        console.error('Error fetching ratings:', err);
+      }
+    };
+    fetchRatings();
+  }, [id, currentUser]);
 
   // Load module sessions to show Continue vs Start Lesson
   useEffect(() => {
@@ -122,6 +164,26 @@ const CompanionSession = () => {
     
     loadModuleSessions();
   }, [currentUser, companion, id]);
+
+  // Load Leaderboard when tab is active
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      if (activeSidebarTab !== 'leaderboard' || !id) return;
+      setLoadingLeaderboard(true);
+      try {
+        const leaderboardRef = collection(db, 'companions', id, 'leaderboard');
+        const q = query(leaderboardRef, orderBy('xp', 'desc'), limit(10));
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLeaderboardData(data);
+      } catch (err) {
+        console.error('Error fetching leaderboard:', err);
+      } finally {
+        setLoadingLeaderboard(false);
+      }
+    };
+    fetchLeaderboard();
+  }, [activeSidebarTab, id]);
 
   useEffect(() => {
     let interval;
@@ -449,6 +511,9 @@ const CompanionSession = () => {
   const handleQuizPass = async (score) => {
     setQuizScores(prev => ({ ...prev, [quizModuleId]: score }));
     
+    // Award XP
+    awardXP(50);
+    
     // Update local progress
     const updatedProgress = [...moduleProgress];
     const currentProgress = updatedProgress.find(p => p.moduleId === quizModuleId);
@@ -568,18 +633,71 @@ const CompanionSession = () => {
 
 
 
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('File is too large (max 5MB)');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result.split(',')[1];
+          setAttachedFile({
+            type: 'image',
+            name: file.name,
+            mimeType: file.type,
+            base64: base64String,
+            previewUrl: URL.createObjectURL(file)
+          });
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setAttachedFile({
+            type: 'text',
+            name: file.name,
+            content: reader.result
+          });
+        };
+        reader.readAsText(file);
+      }
+    } catch (e) {
+      showToast('Error reading file. Try a different one.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachedFile = () => {
+    if (attachedFile?.previewUrl) URL.revokeObjectURL(attachedFile.previewUrl);
+    setAttachedFile(null);
+  };
+
   const handleSendMessage = async () => {
-    if (!inputText.trim() || isProcessing) return;
+    if ((!inputText.trim() && !attachedFile) || isProcessing) return;
     
+    // Save locally
+    const fileToSend = attachedFile;
     const userMessage = inputText.trim();
+    
     setInputText('');
-    addMessage(userMessage, 'user');
+    setAttachedFile(null); // Clear early for better UX
+    
+    addMessage(userMessage, 'user', null, fileToSend);
     setIsProcessing(true);
     
     // Generate AI response with streaming for real-time
     const conversationHistory = transcript.map(msg => ({
       role: msg.sender === 'user' ? 'user' : 'assistant',
-      content: msg.text
+      content: msg.file ? `[Attached File: ${msg.file.name}]\n${msg.text}` : msg.text
     }));
     
     // Add placeholder message for streaming
@@ -600,7 +718,8 @@ const CompanionSession = () => {
           fullResponse += chunk;
           updateMessage(messageId, fullResponse);
         },
-        currentModule
+        currentModule,
+        fileToSend
       );
       
       // Ensure final message is set
@@ -623,12 +742,12 @@ const CompanionSession = () => {
     }
   };
 
-  const addMessage = (text, sender, id = null) => {
+  const addMessage = (text, sender, id = null, file = null) => {
     const newMessage = {
-      id: id ||
-`msg-${Date.now()}-${messageIdCounter.current++}`,
+      id: id || `msg-${Date.now()}-${messageIdCounter.current++}`,
       text,
       sender,
+      file,
       timestamp: new Date()
     };
     setTranscript(prev => {
@@ -648,8 +767,24 @@ const CompanionSession = () => {
     // Increment message count for user messages
     if (sender === 'user') {
       setModuleMessageCount(prev => prev + 1);
+      awardXP(1);
     }
     return newMessage.id;
+  };
+
+  const awardXP = async (amount) => {
+    if (!currentUser || !id) return;
+    try {
+      const leaderboardRef = doc(db, 'companions', id, 'leaderboard', currentUser.uid);
+      await setDoc(leaderboardRef, {
+        displayName: currentUser.displayName || 'Anonymous Student',
+        photoURL: currentUser.photoURL || null,
+        xp: increment(amount),
+        lastUpdated: new Date()
+      }, { merge: true });
+    } catch (err) {
+      console.error('Error awarding XP:', err);
+    }
   };
 
   const updateMessage = (messageId, newText) => {
@@ -813,6 +948,15 @@ const CompanionSession = () => {
             <div className="companion-tags">
               <span className="tag">{companion.subject}</span>
               <span className="tag">{companion.topic}</span>
+              <button 
+                className="rating-badge tag"
+                onClick={() => !userRating && setShowRatingModal(true)}
+                title={userRating ? `You rated this ${userRating} stars` : "Rate this companion"}
+                style={{ cursor: userRating ? 'default' : 'pointer', background: 'rgba(255, 193, 7, 0.1)', color: '#ffc107', border: '1px solid rgba(255, 193, 7, 0.2)', display: 'flex', alignItems: 'center' }}
+              >
+                <Star size={12} fill={companionRating.count > 0 ? "currentColor" : "none"} />
+                <span style={{ marginLeft: '4px' }}>{companionRating.count > 0 ? `${companionRating.average} (${companionRating.count})` : 'New'}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -980,76 +1124,133 @@ const CompanionSession = () => {
             {/* Toast Notifications */}
             <Toast toasts={toasts} />
             
-            {/* Curriculum Sidebar */}
-            {curriculumVisible && companion?.curriculum && companion.curriculum.length > 0 && (
+            {/* Sidebar (Curriculum & Leaderboard) */}
+            {curriculumVisible && companion && (
               <div className="curriculum-sidebar">
-                <div className="curriculum-header">
-                  <h3>📚 Course Modules</h3>
+                <div className="sidebar-tabs" style={{ display: 'flex', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-secondary)', alignItems: 'center' }}>
+                  <button 
+                    style={{ flex: 1, padding: '12px 0', background: 'transparent', border: 'none', borderBottom: activeSidebarTab === 'curriculum' ? '2px solid #6c5cff' : '2px solid transparent', color: activeSidebarTab === 'curriculum' ? '#6c5cff' : 'var(--text-secondary)', fontWeight: activeSidebarTab === 'curriculum' ? '600' : '400', cursor: 'pointer', transition: 'all 0.2s' }}
+                    onClick={() => setActiveSidebarTab('curriculum')}
+                  >
+                    📚 Curriculum
+                  </button>
+                  <button 
+                    style={{ flex: 1, padding: '12px 0', background: 'transparent', border: 'none', borderBottom: activeSidebarTab === 'leaderboard' ? '2px solid #ffaa00' : '2px solid transparent', color: activeSidebarTab === 'leaderboard' ? '#ffaa00' : 'var(--text-secondary)', fontWeight: activeSidebarTab === 'leaderboard' ? '600' : '400', cursor: 'pointer', transition: 'all 0.2s' }}
+                    onClick={() => setActiveSidebarTab('leaderboard')}
+                  >
+                    🏆 Leaderboard
+                  </button>
                   <button 
                     className="curriculum-close-btn"
                     onClick={() => setCurriculumVisible(false)}
-                    aria-label="Close curriculum"
+                    style={{ padding: '0 12px' }}
+                    aria-label="Close sidebar"
                   >
                     ×
                   </button>
                 </div>
-                <div className="module-list">
-                  {companion.curriculum.map((module) => {
-                    const unlocked = isModuleUnlocked(module.id);
-                    const completed = isModuleCompleted(module.id);
-                    const isCurrent = module.id === currentModuleId;
-                    
-                    return (
-                      <div
-                        key={module.id}
-                        className={`module-item ${
-                          isCurrent ? 'current' : ''
-                        } ${
-                          unlocked ? 'unlocked' : 'locked'
-                        } ${
-                          completed ? 'completed' : ''
-                        }`}
-                        onClick={() => unlocked && switchModule(module.id)}
-                        style={{ cursor: unlocked ? 'pointer' : 'not-allowed' }}
-                      >
-                        <div className="module-header">
-                          <span className="module-number">Module {module.id}</span>
-                          <span className="module-status" style={{ fontSize: '20px' }}>
-                            {completed ? '✅' : unlocked ? '🔓' : '🔒'}
-                          </span>
+                
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  {activeSidebarTab === 'curriculum' ? (
+                    <>
+                      {companion?.curriculum && companion.curriculum.length > 0 ? (
+                        <>
+                          <div className="module-list">
+                            {companion.curriculum.map((module) => {
+                              const unlocked = isModuleUnlocked(module.id);
+                              const completed = isModuleCompleted(module.id);
+                              const isCurrent = module.id === currentModuleId;
+                              
+                              return (
+                                <div
+                                  key={module.id}
+                                  className={`module-item ${
+                                    isCurrent ? 'current' : ''
+                                  } ${
+                                    unlocked ? 'unlocked' : 'locked'
+                                  } ${
+                                    completed ? 'completed' : ''
+                                  }`}
+                                  onClick={() => unlocked && switchModule(module.id)}
+                                  style={{ cursor: unlocked ? 'pointer' : 'not-allowed' }}
+                                >
+                                  <div className="module-header">
+                                    <span className="module-number">Module {module.id}</span>
+                                    <span className="module-status" style={{ fontSize: '20px' }}>
+                                      {completed ? '✅' : unlocked ? '🔓' : '🔒'}
+                                    </span>
+                                  </div>
+                                  <div className="module-title">{module.title}</div>
+                                  <div className="module-description">{module.description}</div>
+                                  {(() => {
+                                    const moduleStats = cumulativeModuleStats[module.id] || { totalTime: 0, totalMessages: 0 };
+                                    const displayTime = isCurrent ? moduleStats.totalTime + moduleTimeSpent : moduleStats.totalTime;
+                                    const displayMessages = isCurrent ? moduleStats.totalMessages + moduleMessageCount : moduleStats.totalMessages;
+                                    
+                                    return (displayTime > 0 || displayMessages > 0 || isCurrent) && (
+                                      <div className="module-timer">
+                                        {isCurrent ? (
+                                          <>
+                                            ⏱️ {Math.floor(displayTime / 60)}:{(displayTime % 60).toString().padStart(2, '0')}
+                                            <br />
+                                            💬 {displayMessages} messages
+                                          </>
+                                        ) : (
+                                          <>
+                                            📊 Total: {Math.floor(displayTime / 60)}min {displayMessages}msg
+                                          </>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {moduleTimeSpent >= 60 && moduleMessageCount >= 10 && !isModuleCompleted(currentModuleId) && (
+                            <button onClick={() => openQuizForModule(currentModuleId)} className="btn-complete-module" style={{ margin: '16px' }}>
+                              📝 Take Quiz — Module {currentModuleId}
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                          No curriculum available.
                         </div>
-                        <div className="module-title">{module.title}</div>
-                        <div className="module-description">{module.description}</div>
-                        {(() => {
-                          const moduleStats = cumulativeModuleStats[module.id] || { totalTime: 0, totalMessages: 0 };
-                          const displayTime = isCurrent ? moduleStats.totalTime + moduleTimeSpent : moduleStats.totalTime;
-                          const displayMessages = isCurrent ? moduleStats.totalMessages + moduleMessageCount : moduleStats.totalMessages;
-                          
-                          return (displayTime > 0 || displayMessages > 0 || isCurrent) && (
-                            <div className="module-timer">
-                              {isCurrent ? (
-                                <>
-                                  ⏱️ {Math.floor(displayTime / 60)}:{(displayTime % 60).toString().padStart(2, '0')}
-                                  <br />
-                                  💬 {displayMessages} messages
-                                </>
-                              ) : (
-                                <>
-                                  📊 Total: {Math.floor(displayTime / 60)}min {displayMessages}msg
-                                </>
-                              )}
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ padding: '16px' }}>
+                      <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--text-primary)', textAlign: 'center' }}>Top Students</h3>
+                      {loadingLeaderboard ? (
+                        <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>Fetching ranks...</div>
+                      ) : leaderboardData.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {leaderboardData.map((user, index) => (
+                            <div key={user.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: user.id === currentUser?.uid ? 'rgba(108, 92, 255, 0.1)' : 'var(--bg-tertiary)', border: user.id === currentUser?.uid ? '1px solid #6c5cff' : '1px solid var(--border-light)', borderRadius: '8px' }}>
+                              <div style={{ width: '24px', textAlign: 'center', fontWeight: '700', color: index === 0 ? '#ffaa00' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : 'var(--text-secondary)' }}>
+                                {index + 1}
+                              </div>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                                {user.photoURL ? <img src={user.photoURL} alt={user.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Crown size={16} color="var(--text-secondary)" />}
+                              </div>
+                              <div style={{ flex: 1, overflow: 'hidden' }}>
+                                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{user.displayName}</div>
+                              </div>
+                              <div style={{ fontSize: '12px', fontWeight: '700', color: '#ffaa00' }}>
+                                {user.xp} XP
+                              </div>
                             </div>
-                          );
-                        })()}
-                      </div>
-                    );
-                  })}
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                          No one is on the leaderboard yet. Send a message to claim 1st place!
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {moduleTimeSpent >= 60 && moduleMessageCount >= 10 && !isModuleCompleted(currentModuleId) && (
-                  <button onClick={() => openQuizForModule(currentModuleId)} className="btn-complete-module">
-                    📝 Take Quiz — Module {currentModuleId}
-                  </button>
-                )}
               </div>
             )}
             {/* Chat Messages or Empty State */}
@@ -1079,6 +1280,18 @@ const CompanionSession = () => {
                         <div className="msg-name">
                           {msg.sender === 'user' ? currentUser?.displayName?.split(' ')[0] || 'You' : companion.name}
                         </div>
+                        {msg.file && (
+                          <div className={`msg-attachment ${msg.file.type}`}>
+                            {msg.file.type === 'image' && msg.file.base64 ? (
+                              <img src={`data:${msg.file.mimeType};base64,${msg.file.base64}`} alt={msg.file.name} className="attachment-img" />
+                            ) : (
+                              <div className="attachment-doc">
+                                <FileText size={16} />
+                                <span>{msg.file.name}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <div className="msg-text">
                           <ReactMarkdown>{msg.text}</ReactMarkdown>
                         </div>
@@ -1151,9 +1364,36 @@ const CompanionSession = () => {
 
             {/* Input Area */}
             <div className="chat-input-area">
+              {attachedFile && (
+                <div className="attachment-preview-chip">
+                  <div className="chip-content">
+                    {attachedFile.type === 'image' ? (
+                      <img src={attachedFile.previewUrl} alt={attachedFile.name} className="chip-img" />
+                    ) : (
+                      <FileText size={16} className="chip-icon" />
+                    )}
+                    <span className="chip-name">{attachedFile.name}</span>
+                  </div>
+                  <button className="chip-remove" onClick={removeAttachedFile} title="Remove attachment">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
               <div className="input-container">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                    accept="image/*,.txt,.md,.csv,.json,.js,.py,.html,.css"
+                  />
                   <div className="input-wrapper">
-                    <button className="input-btn upload" title="Upload Attachment">
+                    <button 
+                      className={`input-btn upload ${isUploading ? 'loading' : ''}`} 
+                      title="Upload Attachment"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading || isProcessing}
+                    >
                       <Paperclip size={16} />
                     </button>
                     {isCodingCompanion && (
@@ -1181,7 +1421,7 @@ const CompanionSession = () => {
                   </button>
                   <button
                     onClick={handleSendMessage}
-                    disabled={!inputText.trim() || isProcessing}
+                    disabled={(!inputText.trim() && !attachedFile) || isProcessing}
                     className="input-btn send"
                   >
                     <Send size={16} />
@@ -1224,6 +1464,21 @@ const CompanionSession = () => {
           currentModule={companion?.curriculum?.find(m => m.id === currentModuleId)}
         />
       )}
+      
+      {/* Rating Modal */}
+      <RatingModal
+        isOpen={showRatingModal}
+        onClose={() => setShowRatingModal(false)}
+        companionId={id}
+        companionName={companion.name}
+        onRatingSubmitted={(rating) => {
+          setUserRating(rating);
+          setCompanionRating(prev => ({
+            average: prev.count === 0 ? rating : ((parseFloat(prev.average) * prev.count + rating) / (prev.count + 1)).toFixed(1),
+            count: prev.count + 1
+          }));
+        }}
+      />
       <Toast toasts={toasts} />
     </div>
   );
