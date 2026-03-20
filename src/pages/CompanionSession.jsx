@@ -7,6 +7,7 @@ import { generateAIResponse as getAIResponse } from '../lib/gemini';
 import { ArrowLeft, Mic, Crown, Volume2, Send, Paperclip, Copy, RotateCcw, Pause, StopCircle, ArrowDown } from 'lucide-react';
 import ChatRobot from '../components/ChatRobot';
 import VoiceModal from '../components/VoiceModal';
+import QuizModal from '../components/QuizModal';
 import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import useVapi from '../hooks/useVapi';
@@ -46,6 +47,9 @@ const CompanionSession = () => {
   const [cumulativeModuleStats, setCumulativeModuleStats] = useState({}); // Store cumulative stats per module
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [unlockedModuleId, setUnlockedModuleId] = useState(null);
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [quizModuleId, setQuizModuleId] = useState(null);
+  const [quizScores, setQuizScores] = useState({}); // { moduleId: score }
 
 
   useEffect(() => {
@@ -209,7 +213,18 @@ const CompanionSession = () => {
   // Open voice modal and start VAPI call
   const handleOpenVoiceModal = async () => {
     setShowVoiceModal(true);
-    await startCall();
+    // Build context from last 5 chat messages so Vapi continues the conversation
+    const lastMessages = transcript.slice(-5).map(m => 
+      `${m.sender === 'user' ? 'Student' : 'Tutor'}: ${m.text}`
+    ).join('\n');
+    const currentModule = companion?.curriculum?.find(m => m.id === currentModuleId);
+    const context = {
+      companionName: companion?.name || 'Tutor',
+      topic: companion?.topic || 'the subject',
+      moduleName: currentModule?.title || '',
+      chatHistory: lastMessages
+    };
+    await startCall(context);
   };
 
   // End voice call and close modal
@@ -374,7 +389,7 @@ const CompanionSession = () => {
     }
   }, [moduleTimeSpent, moduleMessageCount, sessionStarted, currentModuleId]);
   
-  // Helper:  // Check if module is unlocked based on cumulative progress
+  // Helper: Check if module is unlocked based on cumulative progress + quiz
   const isModuleUnlocked = (moduleId) => {
     if (moduleId === 1) return true;
     
@@ -383,8 +398,10 @@ const CompanionSession = () => {
     
     if (!prevProgress) return false;
     
-    // Check cumulative totals: 10+ messages AND 1+ minute
-    return (prevProgress.totalMessages || 0) >= 10 && (prevProgress.totalTime || 0) >= 60;
+    // Check cumulative totals: 10+ messages AND 1+ minute AND quiz passed (≥70%)
+    const hasEnoughStudy = (prevProgress.totalMessages || 0) >= 10 && (prevProgress.totalTime || 0) >= 60;
+    const quizPassed = (prevProgress.quizScore || 0) >= 70;
+    return hasEnoughStudy && quizPassed;
   };
   
   // Helper: Check if module is completed
@@ -420,31 +437,66 @@ const CompanionSession = () => {
     setModuleMessageCount(0); // Reset message count
   };
   
-  // Mark current module as complete
-  const completeCurrentModule = () => {
-    const updatedProgress = [...moduleProgress];
-    const currentProgress = updatedProgress.find(p => p.moduleId === currentModuleId);
+  // Open quiz for a module
+  const openQuizForModule = (moduleId) => {
+    setQuizModuleId(moduleId);
+    setShowQuizModal(true);
+  };
+
+  // Handle quiz pass — mark module complete + save score
+  const handleQuizPass = async (score) => {
+    setQuizScores(prev => ({ ...prev, [quizModuleId]: score }));
     
+    // Update local progress
+    const updatedProgress = [...moduleProgress];
+    const currentProgress = updatedProgress.find(p => p.moduleId === quizModuleId);
     if (currentProgress) {
       currentProgress.completed = true;
-      currentProgress.timeSpent = moduleTimeSpent;
-      currentProgress.messageCount = moduleMessageCount;
+      currentProgress.quizScore = score;
     } else {
       updatedProgress.push({
-        moduleId: currentModuleId,
+        moduleId: quizModuleId,
         timeSpent: moduleTimeSpent,
         messageCount: moduleMessageCount,
-        completed: true
+        completed: true,
+        quizScore: score
       });
     }
-    
     setModuleProgress(updatedProgress);
-    
-    // Auto-switch to next module if available
-    const curriculum = companion?.curriculum || [];
-    if (currentModuleId < curriculum.length) {
-      switchModule(currentModuleId + 1);
+
+    // Persist quiz score to Firestore companion document
+    try {
+      const companionRef = doc(db, 'companions', id);
+      const companionDoc = await getDoc(companionRef);
+      if (companionDoc.exists()) {
+        const firestoreProgress = companionDoc.data().moduleProgress || [];
+        const idx = firestoreProgress.findIndex(p => p.moduleId === quizModuleId);
+        if (idx >= 0) {
+          firestoreProgress[idx].quizScore = score;
+          firestoreProgress[idx].completed = true;
+        } else {
+          firestoreProgress.push({
+            moduleId: quizModuleId,
+            totalTime: 0,
+            totalMessages: 0,
+            quizScore: score,
+            completed: true,
+            lastAccessed: new Date()
+          });
+        }
+        await updateDoc(companionRef, { moduleProgress: firestoreProgress });
+      }
+    } catch (err) {
+      console.error('Error saving quiz score:', err);
     }
+
+    showToast(`🎉 Module ${quizModuleId} complete! Score: ${score}%`);
+  };
+
+  // Handle quiz fail
+  const handleQuizFail = (score) => {
+    setQuizScores(prev => ({ ...prev, [quizModuleId]: score }));
+    showToast(`Score: ${score}%. You need 70% to unlock the next module.`);
   };
 
     const endSession = async () => {
@@ -992,8 +1044,8 @@ const CompanionSession = () => {
                   })}
                 </div>
                 {moduleTimeSpent >= 60 && moduleMessageCount >= 10 && !isModuleCompleted(currentModuleId) && (
-                  <button onClick={completeCurrentModule} className="btn-complete-module">
-                    ✓ Mark Module {currentModuleId} Complete
+                  <button onClick={() => openQuizForModule(currentModuleId)} className="btn-complete-module">
+                    📝 Take Quiz — Module {currentModuleId}
                   </button>
                 )}
               </div>
@@ -1141,6 +1193,14 @@ const CompanionSession = () => {
         onEndCall={handleEndVoiceCall}
         onSwitchToText={handleSwitchToText}
         onSaveTranscript={handleSaveVoiceTranscript}
+      />
+      {/* Quiz Modal — module completion gate */}
+      <QuizModal
+        isOpen={showQuizModal}
+        module={companion?.curriculum?.find(m => m.id === quizModuleId)}
+        onClose={() => setShowQuizModal(false)}
+        onPass={handleQuizPass}
+        onFail={handleQuizFail}
       />
       <Toast toasts={toasts} />
     </div>

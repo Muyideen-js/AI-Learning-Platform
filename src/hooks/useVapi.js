@@ -131,8 +131,14 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
      * 
      * MUST be called from a user-initiated event (click handler), never from useEffect.
      * Has a start lock to prevent double invocations from React 18 StrictMode.
+     * 
+     * @param {Object} context - Optional chat context for continuity
+     * @param {string} context.companionName - Name of the AI companion
+     * @param {string} context.topic - Current learning topic
+     * @param {string} context.moduleName - Current module title
+     * @param {string} context.chatHistory - Last few messages as text
      */
-    const startCall = useCallback(async () => {
+    const startCall = useCallback(async (context = null) => {
         // Start lock — prevent double start from StrictMode or rapid clicks
         if (isStartingRef.current || isCallActive) {
             console.warn('VAPI: start already in progress or call active, ignoring.');
@@ -160,11 +166,18 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
                 return;
             }
 
-            // Start with assistant ID + overrides to disable Krisp noise suppression
+            // Build assistant overrides to inject chat context
+            // so the AI continues from where the text conversation left off
+            let assistantOverrides = undefined;
+            if (context && context.chatHistory) {
+                const contextMessage = `You are ${context.companionName || 'a tutor'}, continuing a learning session about ${context.topic || 'the subject'}${context.moduleName ? ` (Module: ${context.moduleName})` : ''}. Here is what we just discussed in text chat:\n\n${context.chatHistory}\n\nContinue the conversation naturally from where we left off. Do NOT restart the lesson from scratch. Greet the student briefly and pick up from the last topic discussed.`;
+                assistantOverrides = {
+                    firstMessage: contextMessage
+                };
+            }
+
             // Start with the pre-configured assistant from VAPI dashboard.
-            // To disable Krisp noise suppression, toggle it OFF in the
-            // VAPI dashboard → Assistant → Settings → Background Denoising.
-            await vapi.start(assistantId);
+            await vapi.start(assistantId, assistantOverrides);
         } catch (err) {
             console.error('Failed to start VAPI call:', err);
             isStartingRef.current = false;
