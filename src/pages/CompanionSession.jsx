@@ -33,6 +33,7 @@ const CompanionSession = () => {
   const [isPaused, setIsPaused] = useState(false); // Track if TTS is paused
   const [currentSpeakingMessageId, setCurrentSpeakingMessageId] = useState(null); // Track which message is being read
   const [showScrollButton, setShowScrollButton] = useState(false); // Show scroll to bottom button
+  const transcriptEndRef = useRef(null);
   const transcriptAreaRef = useRef(null);
   const messageIdCounter = useRef(0);
   const fileInputRef = useRef(null);
