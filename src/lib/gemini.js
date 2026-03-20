@@ -74,10 +74,10 @@ Be warm, engaging, and conversational.
 Avoid robotic or repetitive phrases.
 
 TEACHING METHOD:
-        1. EXPLAIN STEP - BY - STEP: Break down complex topics into small, digestible parts.do NOT dump a wall of text.
-2. CHECK FOR UNDERSTANDING: After explaining a concept, ALWAYS ask: "Do you understand this stage, or should I explain more in details?" or "Do you have a question, or should I continue?"
-        3. WAIT FOR CONFIRMATION: Do not proceed to the next step until the user confirms(e.g., "Yes", "Continue", "Understand").
-4. INTERACTIVE: Ask thought - provoking questions to keep the user engaged.
+1. EXPLAIN STEP-BY-STEP: Break down complex topics into small, digestible parts. Do NOT dump a wall of text.
+2. CHECK FOR UNDERSTANDING: After explaining a concept, ask: "Do you understand this stage?"
+3. ASSIGN QUICK TASKS: Periodically give the user a quick, mini coding challenge or task to try in their Code Sandbox (e.g. "Quickly write a function that..."). Let them know they can click 'Check My Code' to have you review their solution.
+4. WAIT FOR CONFIRMATION: Do not proceed to the next step until the user responds or submits their task.
 
 If this is the VERY FIRST message of the session(conversation history is empty), say exactly:
         "Welcome! Are you ready to start the course on ${companion.topic}? Say 'Start' when you are ready!"
@@ -341,9 +341,10 @@ export const generateCurriculum = generateCurriculumWithQuizzes;
  * @param {string} code - The code to review
  * @param {string} language - The programming language
  * @param {string} moduleContext - The current learning module context
+ * @param {string} lastAiMessage - The latest task/challenge the AI gave the user
  * @returns {Promise<string>} - Markdown formatted review
  */
-export const reviewCode = async (code, language, moduleContext = '') => {
+export const reviewCode = async (code, language, moduleContext = '', lastAiMessage = '') => {
     try {
         const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
         if (!apiKey) throw new Error("API key is missing");
@@ -374,22 +375,23 @@ export const reviewCode = async (code, language, moduleContext = '') => {
 
         const prompt = `You are an expert ${language} coding tutor. 
 Please review the following code submitted by a student.
-${moduleContext ? `\nContext: The student is currently learning: ${moduleContext}\n` : ''}
+${moduleContext ? `\nContext: The student is learning: ${moduleContext}\n` : ''}
+${lastAiMessage ? `\nChallenge Assigned: You recently asked the student to do this:\n"${lastAiMessage}"\n` : ''}
 
 Code to review:
 \`\`\`${language}
 ${code}
 \`\`\`
 
-Provide a helpful, encouraging, and educational review formatted in Markdown. 
+Evaluate if the supplied code correctly accomplishes the task/challenge you assigned. Provide a helpful, encouraging, and educational review formatted in Markdown. 
 Include:
-1. **Grade/Assessment**: Briefly state how good the code is (e.g., "Great job!", "Needs some work").
+1. **Grade/Assessment**: Did they pass the challenge? (e.g., "✅ Passed!", "❌ Needs work").
 2. **What works well**: Point out 1-2 good things they did.
-3. **Issues/Bugs**: Point out any syntax errors, logic bugs, or anti-patterns.
-4. **Suggestions**: Provide 1-2 concrete ways to improve or optimize the code.
+3. **Issues/Bugs**: Point out any syntax errors, logic bugs, or if they failed to solve the challenge.
+4. **Suggestions**: Provide 1-2 concrete ways to improve or fix the code.
 5. **Fixed Code**: (Optional) If there were issues, provide the corrected code snippet.
 
-Keep your tone friendly and constructive, as if speaking to a beginner. Do NOT be overly harsh. Keep the review concise.`;
+Keep your tone friendly and constructive, as if speaking to a beginner. Keep the review concise.`;
 
         const requestBody = {
             contents: [{ role: "user", parts: [{ text: prompt }] }],

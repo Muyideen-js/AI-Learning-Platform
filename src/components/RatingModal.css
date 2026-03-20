@@ -17,8 +17,8 @@
   background: #1a1a24;
   border-radius: 12px;
   width: 100%;
-  max-width: 400px;
-  padding: 32px;
+  max-width: 320px;
+  padding: 24px;
   position: relative;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
@@ -63,7 +63,7 @@
 }
 
 .rating-header h2 {
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 700;
   margin: 0 0 8px;
   color: #fff;
@@ -71,8 +71,8 @@
 
 .rating-header p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
 }
 
 .rating-header strong {
@@ -90,8 +90,8 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.2);
-  padding: 4px;
+  color: rgba(255, 255, 255, 0.15);
+  padding: 2px;
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -121,9 +121,9 @@
 
 .rating-actions button {
   flex: 1;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;

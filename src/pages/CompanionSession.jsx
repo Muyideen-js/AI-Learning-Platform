@@ -1470,6 +1470,7 @@ const CompanionSession = () => {
           onClose={() => setShowCodeSandbox(false)}
           companion={companion}
           currentModule={companion?.curriculum?.find(m => m.id === currentModuleId)}
+          lastAiMessage={transcript.filter(m => m.sender === 'ai').pop()?.text}
         />
       )}
       

@@ -9,7 +9,6 @@ const RatingModal = ({ isOpen, onClose, companionId, companionName, onRatingSubm
   const { currentUser } = useAuth();
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
-  const [reviewText, setReviewText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -33,7 +32,6 @@ const RatingModal = ({ isOpen, onClose, companionId, companionName, onRatingSubm
         userName: currentUser.displayName || 'Anonymous User',
         userPhoto: currentUser.photoURL || null,
         rating,
-        reviewText: reviewText.trim(),
         createdAt: serverTimestamp()
       });
 
@@ -90,21 +88,9 @@ const RatingModal = ({ isOpen, onClose, companionId, companionName, onRatingSubm
                 onMouseLeave={() => setHoverRating(0)}
                 onClick={() => setRating(star)}
               >
-                <Star size={32} fill={(hoverRating || rating) >= star ? 'currentColor' : 'none'} />
+                <Star size={28} fill={(hoverRating || rating) >= star ? 'currentColor' : 'none'} />
               </button>
             ))}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="review">Write a review (optional)</label>
-            <textarea
-              id="review"
-              value={reviewText}
-              onChange={(e) => setReviewText(e.target.value)}
-              placeholder="How helped you learn? What was great about it?"
-              rows={4}
-              disabled={isSubmitting}
-            />
           </div>
 
           {error && <div className="rating-error">{error}</div>}

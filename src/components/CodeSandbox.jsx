@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { Play, Sparkles, Trash2, X, ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
+import { Play, Sparkles, CheckCircle, Trash2, X, ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
 import { reviewCode } from '../lib/gemini';
 import ReactMarkdown from 'react-markdown';
 import './CodeSandbox.css';
@@ -56,7 +56,7 @@ const STARTER_CODE = {
  * AI Code Sandbox — Monaco editor + live preview + Gemini code review.
  * Only rendered for coding-related companions.
  */
-const CodeSandbox = ({ isOpen, onClose, companion, currentModule }) => {
+const CodeSandbox = ({ isOpen, onClose, companion, currentModule, lastAiMessage }) => {
   const defaultLang = detectLanguage(companion?.topic, companion?.subject);
   const [language, setLanguage] = useState(defaultLang);
   const [code, setCode] = useState(STARTER_CODE[defaultLang] || STARTER_CODE.javascript);
@@ -146,14 +146,14 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule }) => {
       const moduleContext = currentModule
         ? `Module ${currentModule.id}: ${currentModule.title} — ${currentModule.description}`
         : '';
-      const result = await reviewCode(code, language, moduleContext);
+      const result = await reviewCode(code, language, moduleContext, lastAiMessage);
       setReview(result);
     } catch (err) {
       setReview(`❌ Failed to get AI review: ${err.message}`);
     } finally {
       setIsReviewing(false);
     }
-  }, [code, language, currentModule]);
+  }, [code, language, currentModule, lastAiMessage]);
 
   // Change language
   const handleLanguageChange = (lang) => {
@@ -214,9 +214,9 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule }) => {
             <Play size={13} />
             Run
           </button>
-          <button className="sandbox-btn sandbox-btn--ai" onClick={handleAskAI} disabled={isReviewing || !code.trim()}>
-            <Sparkles size={13} />
-            {isReviewing ? 'Reviewing...' : 'Ask AI'}
+          <button className="sandbox-btn sandbox-btn--ai" onClick={handleAskAI} disabled={isReviewing || !code.trim()} title="Verify code against the AI task">
+            <CheckCircle size={13} />
+            {isReviewing ? 'Checking...' : 'Check My Code'}
           </button>
           <button className="sandbox-btn sandbox-btn--clear" onClick={handleClear} title="Clear">
             <Trash2 size={13} />
@@ -276,7 +276,7 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule }) => {
               className={`output-tab ${activeTab === 'review' ? 'active' : ''}`}
               onClick={() => setActiveTab('review')}
             >
-              AI Review {review ? '✨' : ''}
+              Task Check {review ? '✅' : ''}
             </button>
           </div>
 
@@ -305,7 +305,7 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule }) => {
                 {isReviewing ? (
                   <div className="review-loading">
                     <div className="review-spinner" />
-                    <span>AI is reviewing your code...</span>
+                    <span>Verifying your code...</span>
                   </div>
                 ) : review ? (
                   <div className="review-content">
@@ -313,7 +313,7 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule }) => {
                   </div>
                 ) : (
                   <div className="output-placeholder">
-                    Click <strong>Ask AI</strong> to get a code review
+                    Click <strong>Check My Code</strong> to see if you solved the AI's challenge!
                   </div>
                 )}
               </div>
