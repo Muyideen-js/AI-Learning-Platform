@@ -12,6 +12,7 @@ import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import useVapi from '../hooks/useVapi';
 import ReactMarkdown from 'react-markdown';
+import CodeSandbox from '../components/CodeSandbox';
 import './CompanionSession.css';
 
 const CompanionSession = () => {
@@ -38,6 +39,7 @@ const CompanionSession = () => {
   
   // Curriculum state
   const [currentModuleId, setCurrentModuleId] = useState(1);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [moduleProgress, setModuleProgress] = useState([]);
   const [moduleStartTime, setModuleStartTime] = useState(null);
   const [moduleTimeSpent, setModuleTimeSpent] = useState(0);
@@ -1151,9 +1153,19 @@ const CompanionSession = () => {
             <div className="chat-input-area">
               <div className="input-container">
                   <div className="input-wrapper">
-                    <button className="input-btn upload">
+                    <button className="input-btn upload" title="Upload Attachment">
                       <Paperclip size={16} />
                     </button>
+                    {isCodingCompanion && (
+                      <button 
+                        className={`input-btn ${showCodeSandbox ? 'active' : ''}`}
+                        onClick={() => setShowCodeSandbox(!showCodeSandbox)}
+                        title="Toggle Code Sandbox"
+                        style={{ color: showCodeSandbox ? '#6c5cff' : 'var(--text-secondary)' }}
+                      >
+                        &lt;/&gt;
+                      </button>
+                    )}
                     <textarea
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
@@ -1202,6 +1214,16 @@ const CompanionSession = () => {
         onPass={handleQuizPass}
         onFail={handleQuizFail}
       />
+      
+      {/* Code Sandbox — coding environments only */}
+      {isCodingCompanion && (
+        <CodeSandbox
+          isOpen={showCodeSandbox}
+          onClose={() => setShowCodeSandbox(false)}
+          companion={companion}
+          currentModule={companion?.curriculum?.find(m => m.id === currentModuleId)}
+        />
+      )}
       <Toast toasts={toasts} />
     </div>
   );

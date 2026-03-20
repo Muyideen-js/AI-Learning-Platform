@@ -313,3 +313,92 @@ Requirements:
 // Keep original for compatibility
 export const generateCurriculum = generateCurriculumWithQuizzes;
 
+/**
+ * Reviews user code using Gemini API for the Code Sandbox feature.
+ * 
+ * @param {string} code - The code to review
+ * @param {string} language - The programming language
+ * @param {string} moduleContext - The current learning module context
+ * @returns {Promise<string>} - Markdown formatted review
+ */
+export const reviewCode = async (code, language, moduleContext = '') => {
+    try {
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        if (!apiKey) throw new Error("API key is missing");
+
+        // Try to use flash models for speed, fallback to default
+        let cachedModelName = "gemini-1.5-flash";
+        
+        try {
+            const listResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+            if (listResponse.ok) {
+                const listData = await listResponse.json();
+                const availableModels = listData.models || [];
+                const generateModels = availableModels.filter(m => 
+                    m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent")
+                );
+                
+                const preferredModel = generateModels.find(m => m.name.includes("gemini-2.5-flash")) ||
+                                     generateModels.find(m => m.name.includes("gemini-2.0-flash")) ||
+                                     generateModels.find(m => m.name.includes("gemini-1.5-flash"));
+                                     
+                if (preferredModel) {
+                    cachedModelName = preferredModel.name.replace("models/", "");
+                }
+            }
+        } catch (e) {
+            console.warn("Could not list models for code review, using default", e);
+        }
+
+        const prompt = `You are an expert ${language} coding tutor. 
+Please review the following code submitted by a student.
+${moduleContext ? `\nContext: The student is currently learning: ${moduleContext}\n` : ''}
+
+Code to review:
+\`\`\`${language}
+${code}
+\`\`\`
+
+Provide a helpful, encouraging, and educational review formatted in Markdown. 
+Include:
+1. **Grade/Assessment**: Briefly state how good the code is (e.g., "Great job!", "Needs some work").
+2. **What works well**: Point out 1-2 good things they did.
+3. **Issues/Bugs**: Point out any syntax errors, logic bugs, or anti-patterns.
+4. **Suggestions**: Provide 1-2 concrete ways to improve or optimize the code.
+5. **Fixed Code**: (Optional) If there were issues, provide the corrected code snippet.
+
+Keep your tone friendly and constructive, as if speaking to a beginner. Do NOT be overly harsh. Keep the review concise.`;
+
+        const requestBody = {
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+                temperature: 0.4, // Lower temperature for more factual code review
+                maxOutputTokens: 2000,
+            },
+        };
+
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${cachedModelName}:generateContent?key=${apiKey}`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestBody),
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`API Error ${response.status}`);
+        }
+
+        const data = await response.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!text) throw new Error("Empty response from AI");
+
+        return text;
+
+    } catch (err) {
+        console.error("Code Review Error:", err);
+        throw new Error('Failed to review code. Please try again.');
+    }
+};
