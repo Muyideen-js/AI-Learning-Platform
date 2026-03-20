@@ -43,6 +43,13 @@ const CompanionSession = () => {
   const [attachedFile, setAttachedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  const isCodingCompanion = companion?.subject === 'Coding' || 
+    companion?.topic?.toLowerCase().includes('react') || 
+    companion?.topic?.toLowerCase().includes('javascript') || 
+    companion?.topic?.toLowerCase().includes('python') || 
+    companion?.topic?.toLowerCase().includes('html');
+  const [showCodeSandbox, setShowCodeSandbox] = useState(false);
+
   // Curriculum state
   const [currentModuleId, setCurrentModuleId] = useState(1);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
