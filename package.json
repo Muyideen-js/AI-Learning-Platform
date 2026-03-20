@@ -14,6 +14,7 @@
     "@hookform/resolvers": "^3.9.1",
     "@vapi-ai/web": "^2.5.2",
     "edge-tts": "^1.0.1",
+    "esbuild": "^0.27.4",
     "firebase": "^11.1.0",
     "framer-motion": "^12.31.0",
     "lottie-react": "^2.4.0",

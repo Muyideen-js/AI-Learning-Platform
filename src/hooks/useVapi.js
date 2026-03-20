@@ -167,12 +167,21 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
             }
 
             // Build assistant overrides to inject chat context
-            // so the AI continues from where the text conversation left off
+            // so the AI continues from where the text conversation left off.
+            // We use variableValues for context and a model-generated first message
+            // so the AI greets naturally based on the conversation state.
             let assistantOverrides = undefined;
             if (context && context.chatHistory) {
-                const contextMessage = `You are ${context.companionName || 'a tutor'}, continuing a learning session about ${context.topic || 'the subject'}${context.moduleName ? ` (Module: ${context.moduleName})` : ''}. Here is what we just discussed in text chat:\n\n${context.chatHistory}\n\nContinue the conversation naturally from where we left off. Do NOT restart the lesson from scratch. Greet the student briefly and pick up from the last topic discussed.`;
                 assistantOverrides = {
-                    firstMessage: contextMessage
+                    // Let the model generate a contextual greeting instead of a hardcoded one
+                    firstMessageMode: 'assistant-speaks-first-with-model-generated-message',
+                    // Inject context as template variables that the model can reference
+                    variableValues: {
+                        companionName: context.companionName || 'Tutor',
+                        topic: context.topic || 'the subject',
+                        moduleName: context.moduleName || '',
+                        chatContext: context.chatHistory
+                    }
                 };
             }
 
