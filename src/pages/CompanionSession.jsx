@@ -49,6 +49,7 @@ const CompanionSession = () => {
     companion?.topic?.toLowerCase().includes('python') || 
     companion?.topic?.toLowerCase().includes('html');
   const [showCodeSandbox, setShowCodeSandbox] = useState(false);
+  const [autoContinuePending, setAutoContinuePending] = useState(false);
 
   // Curriculum state
   const [currentModuleId, setCurrentModuleId] = useState(1);
@@ -206,6 +207,14 @@ const CompanionSession = () => {
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [transcript]);
+
+  // Auto-continue next lesson step after passing sandbox
+  useEffect(() => {
+    if (autoContinuePending && !isProcessing) {
+      setAutoContinuePending(false);
+      handleSendMessage("I successfully passed the coding challenge! Please confirm my success and guide me to the next step of this module.");
+    }
+  }, [autoContinuePending, isProcessing, transcript]);
 
   // Helper function to get the best available voice (for per-message read-aloud)
   const getBestVoice = () => {
@@ -691,17 +700,23 @@ const CompanionSession = () => {
 
   const handleCodeChecked = (resultMarkdown) => {
     addMessage(resultMarkdown, 'ai');
+    if (resultMarkdown.includes('✅') || resultMarkdown.toLowerCase().includes('passed')) {
+      setTimeout(() => setAutoContinuePending(true), 1500);
+    }
   };
 
-  const handleSendMessage = async () => {
-    if ((!inputText.trim() && !attachedFile) || isProcessing) return;
+  const handleSendMessage = async (overrideText = null) => {
+    const textToProcess = typeof overrideText === 'string' ? overrideText : inputText.trim();
+    if ((!textToProcess && !attachedFile) || isProcessing) return;
     
     // Save locally
     const fileToSend = attachedFile;
-    const userMessage = inputText.trim();
+    const userMessage = textToProcess;
     
-    setInputText('');
-    setAttachedFile(null); // Clear early for better UX
+    if (typeof overrideText !== 'string') {
+      setInputText('');
+      setAttachedFile(null); // Clear early for better UX
+    }
     
     addMessage(userMessage, 'user', null, fileToSend);
     setIsProcessing(true);
