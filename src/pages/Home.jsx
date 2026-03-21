@@ -74,7 +74,7 @@ const Home = () => {
         <p className="home-subtitle">
           Create personalized AI learning companions and engage in interactive voice-based learning sessions
         </p>
-        <Link to={currentUser ? '/create-companion' : '/sign-in'} className="btn btn-primary btn-large">
+        <Link to={currentUser ? '/create-companion' : '/sign-in'} className="btn btn-large">
           <Sparkles size={14} />
           Build a New Companion
         </Link>
