@@ -15,6 +15,8 @@ import ReactMarkdown from 'react-markdown';
 import CodeSandbox from '../components/CodeSandbox';
 import RatingModal from '../components/RatingModal';
 import mermaid from 'mermaid';
+import { driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
 import './CompanionSession.css';
 
 // Initialize mermaid with dark theme
@@ -99,6 +101,57 @@ const CompanionSession = () => {
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [sessionXP, setSessionXP] = useState(0);
   const [expandedModules, setExpandedModules] = useState({});
+
+  // Page Tour Onboarding (Driver.js)
+  useEffect(() => {
+    if (!sessionStarted || loading || !companion) return;
+
+    const hasSeenTour = localStorage.getItem('hasSeenSessionTour');
+    if (!hasSeenTour) {
+      setTimeout(() => {
+        const steps = [
+          {
+            element: '.companion-info',
+            popover: { title: 'Your AI Tutor', description: 'This is your dedicated tutor for the current subject.', side: 'right' }
+          },
+          {
+            element: '.session-xp-badge',
+            popover: { title: 'Earn XP', description: 'Gain XP by asking questions and passing module quizzes.', side: 'bottom' }
+          }
+        ];
+        
+        if (isCodingCompanion) {
+          steps.push({
+            element: '.btn-code',
+            popover: { title: 'Code Sandbox', description: 'Toggle the live sandbox to test your code and receive real-time evaluations.', side: 'bottom' }
+          });
+        }
+        
+        steps.push(
+          {
+            element: '.btn-curriculum',
+            popover: { title: 'Curriculum', description: 'Click here to view your course modules and track progressive unlocks.', side: 'bottom' }
+          },
+          {
+            element: '.chat-input-area',
+            popover: { title: 'Chat Input', description: 'Type your questions, attach files, or paste code to receive interactive help.', side: 'top' }
+          },
+          {
+            element: '.input-btn[title="Start Voice Tutor"]',
+            popover: { title: 'Live Voice Chat', description: 'Click the glowing microphone to start an uninterrupted voice call with your tutor!', side: 'top' }
+          }
+        );
+
+        const driverObj = driver({
+          showProgress: true,
+          steps
+        });
+        
+        driverObj.drive();
+        localStorage.setItem('hasSeenSessionTour', 'true');
+      }, 1500); // Wait for UI transitions
+    }
+  }, [sessionStarted, loading, companion, isCodingCompanion]);
 
   useEffect(() => {
     const fetchCompanion = async () => {
@@ -620,10 +673,10 @@ const CompanionSession = () => {
   const handleQuizPass = async (score) => {
     setQuizScores(prev => ({ ...prev, [quizModuleId]: score }));
     
-    // Award XP
+    // Award 50 XP to database and visually update the session header
     awardXP(50);
+    setSessionXP(prev => prev + 50);
     
-    // Update local progress
     const updatedProgress = [...moduleProgress];
     const currentProgress = updatedProgress.find(p => p.moduleId === quizModuleId);
     if (currentProgress) {
