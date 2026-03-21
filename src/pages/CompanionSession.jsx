@@ -4,7 +4,7 @@ import { doc, getDoc, collection, addDoc, updateDoc, setDoc, increment, query, w
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateAIResponse as getAIResponse } from '../lib/gemini';
-import { ArrowLeft, Mic, Crown, Volume2, Send, Paperclip, Copy, RotateCcw, Pause, StopCircle, ArrowDown, X, FileText, Image as ImageIcon, Star } from 'lucide-react';
+import { ArrowLeft, Mic, Crown, Volume2, Send, Paperclip, Copy, RotateCcw, Pause, StopCircle, ArrowDown, X, FileText, Image as ImageIcon, Star, ChevronDown, Zap } from 'lucide-react';
 import ChatRobot from '../components/ChatRobot';
 import VoiceModal from '../components/VoiceModal';
 import QuizModal from '../components/QuizModal';
@@ -724,8 +724,26 @@ const CompanionSession = () => {
   const handleCodeChecked = (resultMarkdown) => {
     addMessage(resultMarkdown, 'ai');
     if (resultMarkdown.includes('✅') || resultMarkdown.toLowerCase().includes('passed')) {
+      if (isCodingCompanion) {
+        awardSessionXpAndCheckUnlocks();
+        showToast('🎯 Code passed! +1 XP', 'success');
+      }
       setTimeout(() => setAutoContinuePending(true), 1500);
     }
+  };
+
+  const awardSessionXpAndCheckUnlocks = () => {
+    awardXP(1);
+    setSessionXP(prev => {
+      const newXp = prev + 1;
+      if (newXp > 0 && newXp % 10 === 0) {
+        showToast('🔓 New subtopic unlocked!', 'success');
+        setTimeout(() => {
+          addMessage('🔓 **New Subtopic Unlocked!** Great progress. We can move on to the next concept whenever you are ready.', 'ai');
+        }, 500);
+      }
+      return newXp;
+    });
   };
 
   const handleSendMessage = async (overrideText = null) => {
@@ -777,9 +795,10 @@ const CompanionSession = () => {
         updateMessage(messageId, aiResponse);
       }
       
-      // Award 1 XP per AI response
-      awardXP(1);
-      setSessionXP(prev => prev + 1);
+      // Award 1 XP per AI response for non-coding companions
+      if (!isCodingCompanion) {
+        awardSessionXpAndCheckUnlocks();
+      }
       
       setIsProcessing(false);
     } catch (error) {
@@ -1015,10 +1034,17 @@ const CompanionSession = () => {
         </div>
         {sessionStarted && (
           <div className="header-right">
+            <div className="session-xp-badge" title="Session XP">
+              <Zap size={14} fill="currentColor" className="xp-icon" />
+              <span>{sessionXP} XP</span>
+            </div>
+            
             <div className="session-timer">
               {Math.floor(sessionDuration / 60)}:{(sessionDuration % 60).toString().padStart(2, '0')}
             </div>
             
+            <div className="header-actions-divider"></div>
+
             {/* TTS Controls - Show when speaking */}
             {isSpeaking && (
               <div className="tts-controls">
@@ -1039,29 +1065,31 @@ const CompanionSession = () => {
               </div>
             )}
             
-            {isCodingCompanion && (
-              <button 
-                className={`btn-show ${showCodeSandbox ? 'active' : ''}`}
-                onClick={() => setShowCodeSandbox(!showCodeSandbox)}
-                title="Toggle Code Sandbox"
-                style={{ background: showCodeSandbox ? '#6c5cff' : 'transparent', color: showCodeSandbox ? '#fff' : 'var(--text-primary)', borderColor: showCodeSandbox ? '#6c5cff' : 'var(--text-primary)' }}
-              >
-                &lt;/&gt; {showCodeSandbox ? 'Hide Code' : 'Code'}
+            <div className="header-action-buttons">
+              {isCodingCompanion && (
+                <button 
+                  className={`btn-header-action btn-code ${showCodeSandbox ? 'active' : ''}`}
+                  onClick={() => setShowCodeSandbox(!showCodeSandbox)}
+                  title="Toggle Code Sandbox"
+                >
+                  &lt;/&gt; {showCodeSandbox ? 'Hide Code' : 'Code'}
+                </button>
+              )}
+              
+              {companion?.curriculum && companion.curriculum.length > 0 && (
+                <button 
+                  onClick={() => setCurriculumVisible(!curriculumVisible)}
+                  className={`btn-header-action btn-curriculum ${curriculumVisible ? 'active' : ''}`}
+                  title={curriculumVisible ? 'Hide Curriculum' : 'Show Curriculum'}
+                >
+                  <span className="curriculum-icon">📚</span> {curriculumVisible ? 'Hide' : 'Curriculum'}
+                </button>
+              )}
+              
+              <button onClick={endSession} className="btn-header-action btn-end-session">
+                End Session
               </button>
-            )}
-            
-            {companion?.curriculum && companion.curriculum.length > 0 && (
-              <button 
-                onClick={() => setCurriculumVisible(!curriculumVisible)}
-                className="btn-show"
-                title={curriculumVisible ? 'Hide Curriculum' : 'Show Curriculum'}
-              >
-                {curriculumVisible ? 'Hide' : 'Show'}
-              </button>
-            )}
-            <button onClick={endSession} className="btn-end">
-              End Session
-            </button>
+            </div>
           </div>
         )}
       </div>
@@ -1079,7 +1107,7 @@ const CompanionSession = () => {
               <div className="curriculum-presession">
                 <h3 className="curriculum-presession-title">Course Modules</h3>
                 <div className="module-cards-list">
-                  {companion.curriculum.map((module) => {
+                  {companion.curriculum.map((module, idx) => {
                     const unlocked = isModuleUnlocked(module.id);
                     const completed = isModuleCompleted(module.id);
                     const isExpanded = expandedModules[module.id];
@@ -1099,8 +1127,8 @@ const CompanionSession = () => {
                             <div className="module-card-status">
                               {completed ? '✓' : unlocked ? '○' : '●'}
                             </div>
-                            <div className="module-card-info">
-                              <span className="module-card-number">Module {module.id}</span>
+                            <div className="module-card-info" style={{ textAlign: 'left' }}>
+                              <span className="module-card-number">Module {String(idx + 1).padStart(2, '0')}</span>
                               <h4 className="module-card-title">{module.title}</h4>
                               <p className="module-card-desc">{module.description}</p>
                             </div>
@@ -1119,7 +1147,7 @@ const CompanionSession = () => {
                               </button>
                             )}
                             {completed && <span className="module-done-badge">Done</span>}
-                            <span className={`module-expand-icon ${isExpanded ? 'rotated' : ''}`}>▾</span>
+                            <ChevronDown className={`module-expand-icon ${isExpanded ? 'rotated' : ''}`} size={16} />
                           </div>
                         </div>
                         
