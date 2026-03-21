@@ -469,19 +469,27 @@ const CompanionSession = () => {
         });
       } else {
         // Create new session
+        const initialMessage = {
+          id: `msg-${Date.now()}-init`,
+          text: `Welcome! I'm ${companion.name}. Please send "start" when you are ready to begin this lesson on **${companion.topic}**.`,
+          sender: 'ai',
+          timestamp: new Date()
+        };
+        
         const sessionData = {
           userId: currentUser.uid,
           companionId: id,
           companionName: companion.name,
           moduleId: currentModuleId,
           startedAt: new Date(),
-          transcript: [],
+          transcript: [initialMessage],
           timeSpent: 0,
-          messageCount: 0
+          messageCount: 1
         };
         
         const docRef = await addDoc(collection(db, 'sessions'), sessionData);
         setSessionId(docRef.id);
+        setTranscript([initialMessage]);
         setModuleStartTime(Date.now());
         setSessionStarted(true);
       }
