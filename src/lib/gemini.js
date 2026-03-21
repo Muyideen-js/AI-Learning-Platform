@@ -72,17 +72,17 @@ Focus your teaching on this specific module topic.
 Speak naturally like a real human tutor.
 Be warm, engaging, and conversational.
 Avoid robotic or repetitive phrases.
+Keep responses concise — max 3-4 short paragraphs.
 
 TEACHING METHOD:
 1. EXPLAIN STEP-BY-STEP: Break down complex topics into small, digestible parts. Do NOT dump a wall of text.
-2. CHECK FOR UNDERSTANDING: After explaining a concept, ask: "Do you understand this stage?"
-3. ASSIGN QUICK TASKS: Periodically give the user a quick, mini coding challenge or task to try in their Code Sandbox (e.g. "Quickly write a function that..."). Let them know they can click 'Check My Code' to have you review their solution.
-4. WAIT FOR CONFIRMATION: Do not proceed to the next step until the user responds or submits their task.
-5. ASSESSMENT LOCK: If you have given an assessment and the user hasn't completed it correctly, DO NOT let them change the topic. Kindly insist they finish the coding task first.
+2. PROACTIVE TASKS: You MUST proactively weave mini coding challenges or exercises into your teaching every 2-3 responses WITHOUT the user asking. For example, after explaining a concept, immediately say: "Now try this: write a [specific task] in your Code Sandbox and click 'Check My Code' when done!" This is critical — do NOT wait for them to ask.
+3. WAIT FOR CONFIRMATION: Do not proceed to the next step until the user responds or submits their task.
+4. ASSESSMENT LOCK: If you have given a task and the user hasn't completed it correctly, DO NOT let them change the topic. Kindly insist they finish the task first.
+5. PROGRESSIVE DIFFICULTY: Start simple and gradually increase complexity. Each task should build on the previous one.
+6. DIAGRAMS: When explaining architectures or flows, use mermaid code blocks to visualize them. Wrap diagrams in \`\`\`mermaid ... \`\`\` syntax.
 
-If this is the VERY FIRST message of the session(conversation history is empty), say exactly:
-        "Welcome! Are you ready to start the course on ${companion.topic}? Say 'Start' when you are ready!"
-Only proceed with the first lesson after they confirm.`;
+If this is the VERY FIRST message of the session (conversation history is empty), immediately start teaching with a brief warm welcome and your first lesson point. Do NOT gate behind a 'Start' command — jump straight into the first concept and assign a quick micro-task right away.`;
 
         let userParts = [{ text: userMessage || 'Analyze this file' }];
         
@@ -248,23 +248,27 @@ export const generateCurriculumWithQuizzes = async (topic, description, numberOf
 
 Description: ${description}
 
-Generate EXACTLY ${numberOfModules} progressive modules with quizzes.
+Generate EXACTLY ${numberOfModules} progressive modules. Each module MUST contain exactly 4 subtopics.
 
-IMPORTANT: Each module must have a UNIQUE, SPECIFIC title that describes what will be learned in that module. DO NOT use generic titles like "Module 1: Module 1" or "Learning html basics - Part 1".
+IMPORTANT: Each module must have a UNIQUE, SPECIFIC title. DO NOT use generic titles like "Module 1: Module 1".
 
-Example of GOOD module titles for "HTML Basics":
-- "Introduction to HTML Structure and Tags"
-- "Working with Text, Links, and Images"
-- "Creating Forms and Input Elements"
-- "Semantic HTML and Accessibility"
+Example for "HTML Basics":
+- Module: "HTML Tags & Elements" → subtopics: "The p tag", "Closing tags", "Heading hierarchy", "Nesting elements"
+- Module: "Links & Images" → subtopics: "Anchor tags", "Relative vs absolute URLs", "Image tags", "Alt attributes"
 
 Return ONLY valid JSON (no markdown formatting):
 {
   "modules": [
     {
       "id": 1,
-      "title": "Specific descriptive title for this module",
-      "description": "Clear explanation of what students will learn in this module",
+      "title": "Specific Module Title",
+      "description": "What students learn in this module",
+      "subtopics": [
+        { "id": 1, "title": "Subtopic title", "description": "Brief description of this subtopic" },
+        { "id": 2, "title": "Subtopic title", "description": "Brief description" },
+        { "id": 3, "title": "Subtopic title", "description": "Brief description" },
+        { "id": 4, "title": "Subtopic title", "description": "Brief description" }
+      ],
       "quiz": {
         "questions": [
           {
@@ -281,10 +285,10 @@ Return ONLY valid JSON (no markdown formatting):
 
 Requirements:
 - ${numberOfModules} modules total
-- Each module: UNIQUE, SPECIFIC title (not generic), detailed description
+- Each module: UNIQUE, SPECIFIC title, detailed description, exactly 4 subtopics
+- Subtopics should be granular, specific learning objectives within the module
 - Each quiz: 5 multiple-choice questions
-- Progressive difficulty from basics to advanced
-- Titles should clearly indicate the specific topic covered in each module`;
+- Progressive difficulty from basics to advanced`;
 
         const requestBody = {
             contents: [
@@ -292,7 +296,7 @@ Requirements:
             ],
             generationConfig: {
                 temperature: 0.7,
-                maxOutputTokens: 3000,
+                maxOutputTokens: 6000,
             },
         };
 

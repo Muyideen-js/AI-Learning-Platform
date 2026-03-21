@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc, updateDoc, setDoc, increment, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -14,7 +14,28 @@ import useVapi from '../hooks/useVapi';
 import ReactMarkdown from 'react-markdown';
 import CodeSandbox from '../components/CodeSandbox';
 import RatingModal from '../components/RatingModal';
+import mermaid from 'mermaid';
 import './CompanionSession.css';
+
+// Initialize mermaid with dark theme
+mermaid.initialize({ startOnLoad: false, theme: 'dark', themeVariables: { primaryColor: '#1a1a1a', primaryTextColor: '#fff', primaryBorderColor: '#2a2a2a', lineColor: '#fff', secondaryColor: '#0a0a0a', tertiaryColor: '#141414' }});
+
+// Mermaid diagram rendering component
+const MermaidBlock = ({ chart }) => {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (ref.current && chart) {
+      const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      mermaid.render(id, chart).then(({ svg }) => {
+        if (ref.current) ref.current.innerHTML = svg;
+      }).catch(err => {
+        console.error('Mermaid render error:', err);
+        if (ref.current) ref.current.textContent = chart;
+      });
+    }
+  }, [chart]);
+  return <div ref={ref} className="mermaid-diagram" />;
+};
 
 const CompanionSession = () => {
   const { id } = useParams();
@@ -75,6 +96,8 @@ const CompanionSession = () => {
   const [activeSidebarTab, setActiveSidebarTab] = useState('curriculum');
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+  const [sessionXP, setSessionXP] = useState(0);
+  const [expandedModules, setExpandedModules] = useState({});
 
   useEffect(() => {
     const fetchCompanion = async () => {
@@ -754,6 +777,10 @@ const CompanionSession = () => {
         updateMessage(messageId, aiResponse);
       }
       
+      // Award 1 XP per AI response
+      awardXP(1);
+      setSessionXP(prev => prev + 1);
+      
       setIsProcessing(false);
     } catch (error) {
       console.error('Error generating response:', error);
@@ -794,7 +821,6 @@ const CompanionSession = () => {
     // Increment message count for user messages
     if (sender === 'user') {
       setModuleMessageCount(prev => prev + 1);
-      awardXP(1);
     }
     return newMessage.id;
   };
@@ -1050,106 +1076,91 @@ const CompanionSession = () => {
             </div>
 
             {companion.curriculum && companion.curriculum.length > 0 ? (
-              <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-                <h3 style={{ fontSize: '0.95rem', marginBottom: '16px', textAlign: 'center', fontWeight: '600' }}>Course Modules</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="curriculum-presession">
+                <h3 className="curriculum-presession-title">Course Modules</h3>
+                <div className="module-cards-list">
                   {companion.curriculum.map((module) => {
                     const unlocked = isModuleUnlocked(module.id);
                     const completed = isModuleCompleted(module.id);
+                    const isExpanded = expandedModules[module.id];
+                    const subtopics = module.subtopics || [];
                     
                     return (
                       <div
                         key={module.id}
-                        style={{
-                          padding: '14px 16px',
-                          border: `2px solid ${completed ? '#4CAF50' : unlocked ? 'var(--border-light)' : 'var(--border-light)'}`,
-                          background: unlocked ? 'var(--bg-secondary)' : 'var(--bg-tertiary)',
-                          opacity: unlocked ? 1 : 0.5,
-                          transition: 'all 0.3s ease',
-                          position: 'relative'
-                        }}
+                        className={`module-card-wide ${unlocked ? 'unlocked' : 'locked'} ${completed ? 'completed' : ''} ${isExpanded ? 'expanded' : ''}`}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                              <span style={{ fontSize: '20px' }}>
-                                {completed ? '✅' : unlocked ? '🔓' : '🔒'}
-                              </span>
-                              <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600' }}>
-                                Module {module.id}: {module.title}
-                              </h4>
+                        {/* Module Header — Click to expand */}
+                        <div 
+                          className="module-card-header"
+                          onClick={() => setExpandedModules(prev => ({ ...prev, [module.id]: !prev[module.id] }))}
+                        >
+                          <div className="module-card-left">
+                            <div className="module-card-status">
+                              {completed ? '✓' : unlocked ? '○' : '●'}
                             </div>
-                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '12px', lineHeight: '1.5' }}>
-                              {module.description}
-                            </p>
+                            <div className="module-card-info">
+                              <span className="module-card-number">Module {module.id}</span>
+                              <h4 className="module-card-title">{module.title}</h4>
+                              <p className="module-card-desc">{module.description}</p>
+                            </div>
                           </div>
-                          {unlocked && !completed && (
-                            <button
-                              onClick={() => {
-                                setCurrentModuleId(module.id);
-                                startSession();
-                              }}
-                              style={{
-                                padding: '8px 16px',
-                                background: 'var(--text-primary)',
-                                color: 'var(--bg-primary)',
-                                border: '2px solid var(--text-primary)',
-                                cursor: 'pointer',
-                                fontSize: '11px',
-                                fontWeight: '700',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.05em',
-                                transition: 'all 0.3s ease',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              Start Lesson
-                            </button>
-                          )}
+                          <div className="module-card-right">
+                            {unlocked && !completed && (
+                              <button
+                                className="module-start-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCurrentModuleId(module.id);
+                                  startSession();
+                                }}
+                              >
+                                Start
+                              </button>
+                            )}
+                            {completed && <span className="module-done-badge">Done</span>}
+                            <span className={`module-expand-icon ${isExpanded ? 'rotated' : ''}`}>▾</span>
+                          </div>
                         </div>
+                        
+                        {/* Subtopics Dropdown */}
+                        {isExpanded && subtopics.length > 0 && (
+                          <div className="subtopics-dropdown">
+                            {subtopics.map((sub, idx) => {
+                              const xpNeeded = idx * 10;
+                              const subUnlocked = unlocked && sessionXP >= xpNeeded;
+                              return (
+                                <div 
+                                  key={sub.id || idx}
+                                  className={`subtopic-item ${subUnlocked ? 'sub-unlocked' : 'sub-locked'}`}
+                                  onClick={() => {
+                                    if (subUnlocked && unlocked) {
+                                      setCurrentModuleId(module.id);
+                                      startSession();
+                                    }
+                                  }}
+                                >
+                                  <div className="subtopic-left">
+                                    <span className="subtopic-status">{subUnlocked ? '○' : '●'}</span>
+                                    <div>
+                                      <span className="subtopic-title">{sub.title}</span>
+                                      <span className="subtopic-desc">{sub.description}</span>
+                                    </div>
+                                  </div>
+                                  <span className="subtopic-xp">{xpNeeded === 0 ? 'Free' : `${xpNeeded} XP`}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
-                <div style={{ marginTop: '32px', textAlign: 'center', padding: '24px', background: 'var(--bg-secondary)', border: '2px solid var(--border-light)' }}>
-                  <p style={{ margin: '0 0 16px 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                    Want to unlock more modules and earn a certificate?
-                  </p>
-                  <button
-                    style={{
-                      padding: '12px 24px',
-                      background: 'var(--text-primary)',
-                      color: 'var(--bg-primary)',
-                      border: '2px solid var(--text-primary)',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '700',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = 'var(--bg-primary)';
-                      e.currentTarget.style.color = 'var(--text-primary)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'var(--text-primary)';
-                      e.currentTarget.style.color = 'var(--bg-primary)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    <Crown size={16} />
-                    Go Pro
-                  </button>
-                </div>
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '40px' }}>
-                <p style={{ color: 'var(--text-secondary)' }}>No curriculum available for this companion.</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>No curriculum available for this companion.</p>
                 <button onClick={startSession} className="btn-start" style={{ marginTop: '20px' }}>
                   Start Free Session
                 </button>
@@ -1296,12 +1307,12 @@ const CompanionSession = () => {
               {transcript.length === 0 ? (
                 <div className="empty-state">
                   <ChatRobot />
-                  <h1>
+                  <h1 className="welcome-heading">
                     Are you Ready for <br/>
                     <span style={{ color: 'var(--text-secondary)' }}>{companion.name}</span> class?
                   </h1>
                   <p>
-                    Send "Start" to begin your first lesson!
+                    Send a message to begin your first lesson!
                   </p>
                 </div>
               ) : (
@@ -1331,7 +1342,17 @@ const CompanionSession = () => {
                           </div>
                         )}
                         <div className="msg-text">
-                          <ReactMarkdown>{msg.text}</ReactMarkdown>
+                          <ReactMarkdown
+                            components={{
+                              code({ node, inline, className, children, ...props }) {
+                                const match = /language-(\w+)/.exec(className || '');
+                                if (!inline && match && match[1] === 'mermaid') {
+                                  return <MermaidBlock chart={String(children).replace(/\n$/, '')} />;
+                                }
+                                return <code className={className} {...props}>{children}</code>;
+                              }
+                            }}
+                          >{msg.text}</ReactMarkdown>
                         </div>
                         {/* Action buttons for AI messages */}
                         {msg.sender === 'ai' && msg.text && (
