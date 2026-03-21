@@ -157,41 +157,23 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
                 return;
             }
 
+            // Retrieve the configured VAPI Assistant ID from the environment string.
+            // The user's Public Key returned a 403 Forbidden when we attempted to use
+            // dynamic Transient Assistants, meaning their account requires explicitly using
+            // a Dashboard-configured Assistant ID.
             const assistantId = import.meta.env.VITE_VAPI_ASSISTANT_ID;
-            
-            let callPayload;
-            
-            // Build a dynamic Transient Assistant fallback in case the
-            // dashboard ID is broken/empty, or forcefully use it to bypass
-            // WebRTC server-side webhook ejections from missing variable bindings.
-            const transientAssistant = {
-                name: context?.companionName || "Tutor",
-                firstMessage: `Hello, I'm ${context?.companionName || "your AI tutor"}. I'm ready to continue our lesson on ${context?.topic || "this subject"}.`,
-                model: {
-                    provider: "google",
-                    model: "gemini-1.5-flash",
-                    messages: [
-                        {
-                            role: "system",
-                            content: `You are ${context?.companionName || "an AI tutor"}, an expert teaching ${context?.topic || "a subject"}. 
-The current module is ${context?.moduleName || "General"}. 
-Context of previous chat: ${context?.chatHistory || "No previous chat history."}
-Keep explanations extremely brief and conversational.`
-                        }
-                    ]
-                },
-                voice: {
-                    provider: "11labs",
-                    voiceId: "bIHbv24MWmeRgasZH58o" // Vapi generic default
-                }
-            };
+            if (!assistantId) {
+                setError('Voice assistant not configured. Add VITE_VAPI_ASSISTANT_ID to .env');
+                isStartingRef.current = false;
+                setIsConnecting(false);
+                return;
+            }
 
-            // Forcefully use the Transient Assistant to bypass any broken
-            // WebRTC server-side webhook ejections from missing variable bindings
-            // on the user's VAPI dashboard.
-            callPayload = transientAssistant;
-
-            await vapi.start(callPayload);
+            // We invoke start nakedly using the string ID. We previously safely mocked
+            // the `noise-cancellation` Daily.co WebRTC intercept to prevent Krisp crashes
+            // without locking the hardware enumerateDevices thread. Combined, the native
+            // ID should now connect properly.
+            await vapi.start(assistantId);
         } catch (err) {
             console.error('Failed to start VAPI call:', err);
             isStartingRef.current = false;
