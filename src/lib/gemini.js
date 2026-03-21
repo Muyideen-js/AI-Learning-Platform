@@ -243,7 +243,7 @@ export const generateCurriculumWithQuizzes = async (topic, description, numberOf
 
         const model = cachedModelName;
         const version = "v1beta";
-        const cappedModules = Math.min(numberOfModules, 4); // Hard cap to prevent token truncation
+        const cappedModules = Math.min(numberOfModules, 10); // Scale up to 10 modules
 
         const prompt = `Create a ${difficulty} level learning curriculum for: "${topic}"
 
@@ -279,7 +279,7 @@ Requirements:
 - ${cappedModules} modules total
 - Each module: UNIQUE title, short description, exactly 4 subtopics
 - Subtopics must be granular learning objectives
-- Each quiz: EXACTLY 2 multiple-choice questions (no explanation needed)
+- Each quiz: EXACTLY 1 multiple-choice question (no explanation needed)
 - Progressive difficulty
 - Keep ALL descriptions under 12 words to save space`;
 

@@ -6,7 +6,7 @@ const Toast = ({ toasts }) => {
     <div className="toast-container">
       {toasts.map(toast => (
         <div key={toast.id} className="toast">
-          {typeof toast.message === 'string' ? toast.message : 'Something went wrong'}
+          {toast.message}
         </div>
       ))}
     </div>

@@ -726,7 +726,13 @@ const CompanionSession = () => {
     if (resultMarkdown.includes('✅') || resultMarkdown.toLowerCase().includes('passed')) {
       if (isCodingCompanion) {
         awardSessionXpAndCheckUnlocks();
-        showToast('🎯 Code passed! +1 XP', 'success');
+        showToast(
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Zap size={16} color="#4ade80" />
+            <span>Code passed! +1 XP</span>
+          </div>,
+          3000
+        );
       }
       setTimeout(() => setAutoContinuePending(true), 1500);
     }
@@ -737,7 +743,13 @@ const CompanionSession = () => {
     setSessionXP(prev => {
       const newXp = prev + 1;
       if (newXp > 0 && newXp % 10 === 0) {
-        showToast('🔓 New subtopic unlocked!', 'success');
+        showToast(
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Crown size={16} color="#FFD700" />
+            <span>New subtopic unlocked!</span>
+          </div>,
+          3000
+        );
         setTimeout(() => {
           addMessage('🔓 **New Subtopic Unlocked!** Great progress. We can move on to the next concept whenever you are ready.', 'ai');
         }, 500);
@@ -1184,6 +1196,13 @@ const CompanionSession = () => {
                       </div>
                     );
                   })}
+                </div>
+                
+                <div className="go-pro-container">
+                  <button className="go-pro-btn">
+                    <Crown size={16} />
+                    Go Pro to Unlock More
+                  </button>
                 </div>
               </div>
             ) : (
