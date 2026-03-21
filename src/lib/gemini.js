@@ -243,26 +243,26 @@ export const generateCurriculumWithQuizzes = async (topic, description, numberOf
 
         const model = cachedModelName;
         const version = "v1beta";
+        const cappedModules = Math.min(numberOfModules, 5); // Hard cap to prevent token truncation
 
         const prompt = `Create a ${difficulty} level learning curriculum for: "${topic}"
 
 Description: ${description}
 
-Generate EXACTLY ${numberOfModules} progressive modules. Each module MUST contain exactly 4 subtopics.
+Generate EXACTLY ${cappedModules} progressive modules. Each module MUST contain exactly 4 subtopics.
 
-IMPORTANT: Each module must have a UNIQUE, SPECIFIC title. DO NOT use generic titles like "Module 1: Module 1".
+IMPORTANT: Each module must have a UNIQUE, SPECIFIC title. DO NOT use generic titles like "Module 1".
 
 Example for "HTML Basics":
 - Module: "HTML Tags & Elements" → subtopics: "The p tag", "Closing tags", "Heading hierarchy", "Nesting elements"
-- Module: "Links & Images" → subtopics: "Anchor tags", "Relative vs absolute URLs", "Image tags", "Alt attributes"
 
-Return ONLY valid JSON (no markdown formatting):
+Return ONLY valid JSON:
 {
   "modules": [
     {
       "id": 1,
       "title": "Specific Module Title",
-      "description": "What students learn in this module",
+      "description": "What students learn",
       "subtopics": [
         { "id": 1, "title": "Subtopic title", "description": "Brief description of this subtopic" },
         { "id": 2, "title": "Subtopic title", "description": "Brief description" },
@@ -271,12 +271,7 @@ Return ONLY valid JSON (no markdown formatting):
       ],
       "quiz": {
         "questions": [
-          {
-            "question": "Question text?",
-            "options": ["A", "B", "C", "D"],
-            "correctAnswer": 0,
-            "explanation": "Why correct"
-          }
+          { "question": "?", "options": ["A","B","C","D"], "correctAnswer": 0, "explanation": "Why" }
         ]
       }
     }
@@ -284,11 +279,11 @@ Return ONLY valid JSON (no markdown formatting):
 }
 
 Requirements:
-- ${numberOfModules} modules total
-- Each module: UNIQUE, SPECIFIC title, detailed description, exactly 4 subtopics
-- Subtopics should be granular, specific learning objectives within the module
-- Each quiz: 5 multiple-choice questions
-- Progressive difficulty from basics to advanced`;
+- ${cappedModules} modules total
+- Each module: UNIQUE title, detailed description, exactly 4 subtopics
+- Subtopics must be granular learning objectives
+- Each quiz: EXACTLY 3 multiple-choice questions
+- Progressive difficulty`;
 
         const requestBody = {
             contents: [
@@ -296,7 +291,8 @@ Requirements:
             ],
             generationConfig: {
                 temperature: 0.7,
-                maxOutputTokens: 6000,
+                maxOutputTokens: 8192,
+                responseMimeType: "application/json"
             },
         };
 
@@ -319,11 +315,40 @@ Requirements:
         if (!text) throw new Error("Empty response");
 
         // Parse JSON using Regex to bypass markdown and conversational wrap
+        let jsonStr = text;
         const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            throw new Error("Could not find JSON object in response");
+        if (jsonMatch) {
+            jsonStr = jsonMatch[0];
         }
-        const curriculum = JSON.parse(jsonMatch[0]);
+
+        let curriculum;
+        try {
+            curriculum = JSON.parse(jsonStr);
+        } catch (parseError) {
+            console.warn("Curriculum JSON parse failed, attempting recovery...", parseError.message);
+            // If the JSON is truncated, try simple recovery strategies
+            let recovered = false;
+            let recoveryStr = jsonStr.replace(/,\s*$/, ''); // Remove trailing comma if present
+            
+            const strategies = [
+                recoveryStr + ']}',
+                recoveryStr + '}]}',
+                recoveryStr + ']}]}'
+            ];
+            
+            for (const strategy of strategies) {
+                try {
+                    curriculum = JSON.parse(strategy);
+                    recovered = true;
+                    console.log("Curriculum JSON successfully recovered");
+                    break;
+                } catch(e) { /* ignore */ }
+            }
+            
+            if (!recovered) {
+                throw new Error("Could not parse or recover JSON: " + parseError.message);
+            }
+        }
 
         if (!curriculum.modules || !Array.isArray(curriculum.modules)) {
             throw new Error('Invalid curriculum structure');
