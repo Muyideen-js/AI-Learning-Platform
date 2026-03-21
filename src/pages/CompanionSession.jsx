@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc, updateDoc, setDoc, increment, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, updateDoc, setDoc, increment, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateAIResponse as getAIResponse } from '../lib/gemini';
@@ -71,6 +71,7 @@ const CompanionSession = () => {
     companion?.topic?.toLowerCase().includes('html');
   const [showCodeSandbox, setShowCodeSandbox] = useState(false);
   const [autoContinuePending, setAutoContinuePending] = useState(false);
+  const [autoReplyPending, setAutoReplyPending] = useState(false);
 
   // Curriculum state
   const [currentModuleId, setCurrentModuleId] = useState(1);
@@ -239,6 +240,58 @@ const CompanionSession = () => {
     }
   }, [autoContinuePending, isProcessing, transcript]);
 
+  // Auto-reply when loaded session ends with a user message
+  useEffect(() => {
+    if (autoReplyPending && !isProcessing && transcript.length > 0 && companion) {
+      setAutoReplyPending(false);
+      
+      const lastMsg = transcript[transcript.length - 1];
+      if (lastMsg.sender !== 'user') return;
+
+      const triggerReply = async () => {
+        setIsProcessing(true);
+        const historyData = transcript.slice(0, -1).map(msg => ({
+          role: msg.sender === 'user' ? 'user' : 'assistant',
+          content: msg.file ? `[Attached File: ${msg.file.name}]\n${msg.text}` : msg.text
+        }));
+
+        const msgId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        addMessage('', 'ai', msgId);
+
+        let fullResponse = '';
+        try {
+          const currentModule = companion.curriculum?.find(m => m.id === currentModuleId);
+          const aiResponse = await getAIResponse(
+            lastMsg.text,
+            companion,
+            historyData,
+            (chunk) => {
+              fullResponse += chunk;
+              updateMessage(msgId, fullResponse);
+            },
+            currentModule,
+            lastMsg.file || null
+          );
+
+          if (fullResponse !== aiResponse) {
+            updateMessage(msgId, aiResponse);
+          }
+
+          if (!isCodingCompanion) {
+            awardSessionXpAndCheckUnlocks();
+          }
+          setIsProcessing(false);
+        } catch (error) {
+          console.error('Error generating auto-response:', error);
+          updateMessage(msgId, `Sorry, I encountered an error answering your last message.`);
+          setIsProcessing(false);
+        }
+      };
+
+      triggerReply();
+    }
+  }, [autoReplyPending, isProcessing, transcript, companion, currentModuleId, isCodingCompanion]);
+
   // Helper function to get the best available voice (for per-message read-aloud)
   const getBestVoice = () => {
     const voices = window.speechSynthesis.getVoices();
@@ -398,9 +451,17 @@ const CompanionSession = () => {
         const sessionData = existingSession.data();
         
         setSessionId(existingSession.id);
-        setTranscript(sessionData.transcript || []);
+        const loadedTranscript = sessionData.transcript || [];
+        setTranscript(loadedTranscript);
         setModuleStartTime(Date.now());
         setSessionStarted(true);
+        
+        if (loadedTranscript.length > 0) {
+          const lastMsg = loadedTranscript[loadedTranscript.length - 1];
+          if (lastMsg.sender === 'user') {
+            setAutoReplyPending(true);
+          }
+        }
         
         // Update last accessed
         await updateDoc(doc(db, 'sessions', existingSession.id), {
