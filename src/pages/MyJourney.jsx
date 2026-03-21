@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { ArrowLeft, Home, TrendingUp, Award, BookOpen, Clock, Zap, Target, Flame, Bot, Timer, Star, Trophy, Sparkles, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Home, Zap, Award, Layers, Hourglass, Target, Flame, Cpu, Timer, Star, Trophy, Sparkles, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import './MyJourney.css';
@@ -76,12 +76,12 @@ const MyJourney = () => {
   };
 
   const achievements = [
-    { id: 'first-steps', icon: Target, name: 'First Steps', desc: 'Complete your first session', requirement: 1, current: stats.totalSessions, color: '#00e5ff' },
-    { id: 'on-fire', icon: Flame, name: 'On Fire', desc: 'Complete 10 sessions', requirement: 10, current: stats.totalSessions, color: '#ff3366' },
-    { id: 'ai-master', icon: Bot, name: 'AI Master', desc: 'Create 3 companions', requirement: 3, current: stats.companionsCreated, color: '#6c5cff' },
-    { id: 'time-traveler', icon: Timer, name: 'Time Traveler', desc: 'Learn for 60 minutes', requirement: 60, current: stats.totalMinutes, color: '#ffaa00' },
-    { id: 'dedicated', icon: Star, name: 'Dedicated', desc: '7-day learning streak', requirement: 7, current: stats.currentStreak, color: '#00ffaa' },
-    { id: 'champion', icon: Trophy, name: 'Champion', desc: 'Complete 50 sessions', requirement: 50, current: stats.totalSessions, color: '#ffd700' },
+    { id: 'first-steps', icon: Target, name: 'First Steps', desc: 'Complete your first session', requirement: 1, current: stats.totalSessions },
+    { id: 'on-fire', icon: Flame, name: 'On Fire', desc: 'Complete 10 sessions', requirement: 10, current: stats.totalSessions },
+    { id: 'ai-master', icon: Cpu, name: 'AI Master', desc: 'Create 3 companions', requirement: 3, current: stats.companionsCreated },
+    { id: 'time-traveler', icon: Hourglass, name: 'Time Traveler', desc: 'Learn for 60 minutes', requirement: 60, current: stats.totalMinutes },
+    { id: 'dedicated', icon: Star, name: 'Dedicated', desc: '7-day learning streak', requirement: 7, current: stats.currentStreak },
+    { id: 'champion', icon: Trophy, name: 'Champion', desc: 'Complete 50 sessions', requirement: 50, current: stats.totalSessions },
   ];
 
   if (loading) {
@@ -92,7 +92,7 @@ const MyJourney = () => {
             animate={{ rotate: 360 }} 
             transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
           >
-            <Sparkles size={40} className="glow-icon" />
+            <Sparkles size={40} strokeWidth={1.25} className="glow-icon" />
           </motion.div>
           <p>Syncing your journey...</p>
         </div>
@@ -117,14 +117,14 @@ const MyJourney = () => {
         >
           <div className="nav-buttons">
             <button onClick={() => navigate(-1)} className="glass-btn icon-only" title="Go Back">
-              <ArrowLeft size={20} />
+              <ArrowLeft size={20} strokeWidth={1.25} />
             </button>
             <button onClick={() => navigate('/')} className="glass-btn icon-only" title="Home">
-              <Home size={20} />
+              <Home size={20} strokeWidth={1.25} />
             </button>
           </div>
           <div className="streak-badge">
-            <Flame size={18} className="streak-icon" />
+            <Flame size={18} strokeWidth={1.5} className="streak-icon" />
             <span>{stats.currentStreak} Day Streak</span>
           </div>
         </motion.header>
@@ -150,42 +150,42 @@ const MyJourney = () => {
           animate="show"
         >
           <motion.div className="metric-card glass-panel" variants={itemVariants} whileHover={{ y: -5, scale: 1.02 }}>
-            <div className="metric-icon-box" style={{ color: '#00e5ff', background: 'rgba(0, 229, 255, 0.1)' }}>
-              <BookOpen size={28} />
+            <div className="metric-icon-box">
+              <Layers size={28} strokeWidth={1.25} />
             </div>
             <div className="metric-info">
               <span className="metric-value">{stats.totalSessions}</span>
-              <span className="metric-label">Sessions Completed</span>
+              <span className="metric-label">Sessions</span>
             </div>
           </motion.div>
 
           <motion.div className="metric-card glass-panel" variants={itemVariants} whileHover={{ y: -5, scale: 1.02 }}>
-            <div className="metric-icon-box" style={{ color: '#ffaa00', background: 'rgba(255, 170, 0, 0.1)' }}>
-              <Clock size={28} />
+            <div className="metric-icon-box">
+              <Hourglass size={28} strokeWidth={1.25} />
             </div>
             <div className="metric-info">
               <span className="metric-value">{stats.totalMinutes}</span>
-              <span className="metric-label">Minutes Learned</span>
+              <span className="metric-label">Minutes</span>
             </div>
           </motion.div>
 
           <motion.div className="metric-card glass-panel" variants={itemVariants} whileHover={{ y: -5, scale: 1.02 }}>
-            <div className="metric-icon-box" style={{ color: '#6c5cff', background: 'rgba(108, 92, 255, 0.1)' }}>
-              <Bot size={28} />
+            <div className="metric-icon-box">
+              <Cpu size={28} strokeWidth={1.25} />
             </div>
             <div className="metric-info">
               <span className="metric-value">{stats.companionsCreated}</span>
-              <span className="metric-label">AI Tutors Built</span>
+              <span className="metric-label">AI Built</span>
             </div>
           </motion.div>
 
           <motion.div className="metric-card glass-panel" variants={itemVariants} whileHover={{ y: -5, scale: 1.02 }}>
-            <div className="metric-icon-box" style={{ color: '#ff3366', background: 'rgba(255, 51, 102, 0.1)' }}>
-              <TrendingUp size={28} />
+            <div className="metric-icon-box">
+              <Zap size={28} strokeWidth={1.25} />
             </div>
             <div className="metric-info">
               <span className="metric-value">{stats.currentStreak}</span>
-              <span className="metric-label">Highest Streak</span>
+              <span className="metric-label">Streak Record</span>
             </div>
           </motion.div>
         </motion.div>
@@ -198,7 +198,7 @@ const MyJourney = () => {
           transition={{ delay: 0.4 }}
         >
           <div className="section-header">
-            <Award size={24} className="section-icon" />
+            <Award size={24} strokeWidth={1.5} className="section-icon" />
             <h2>Trophy Room</h2>
           </div>
           
@@ -223,8 +223,8 @@ const MyJourney = () => {
                   }}
                 >
                   <div className="card-glare"></div>
-                  <div className="achievement-icon-wrapper" style={{ color: isUnlocked ? badge.color : 'var(--text-secondary)' }}>
-                    <badge.icon size={40} className={isUnlocked ? 'animate-pulse-slow' : ''} />
+                  <div className="achievement-icon-wrapper">
+                    <badge.icon size={44} strokeWidth={1.1} className={isUnlocked ? 'animate-pulse-slow' : ''} />
                   </div>
                   <h3 className="achievement-name">{badge.name}</h3>
                   <p className="achievement-desc">{badge.desc}</p>
@@ -236,7 +236,7 @@ const MyJourney = () => {
                   )}
                   {isUnlocked && (
                     <div className="unlocked-badge">
-                      <Sparkles size={14} /> Unlocked
+                      <Sparkles size={14} strokeWidth={1.5} /> Unlocked
                     </div>
                   )}
                 </motion.div>
@@ -258,7 +258,7 @@ const MyJourney = () => {
           </div>
           <button onClick={() => navigate('/library')} className="btn-glow">
             <span>Browse Library</span>
-            <ChevronRight size={18} />
+            <ChevronRight size={18} strokeWidth={1.5} />
           </button>
         </motion.div>
 
