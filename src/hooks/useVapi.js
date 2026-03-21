@@ -51,9 +51,27 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
             });
 
             // ----------------------------------------------------------------------
-            // Removed previous WebRTC input settings hack as it caused
-            // microphone thread deadlocks (enumerateDevices timeout) for standard clients.
+            // CRITICAL FIX: Safe WebRTC Intercept for Krisp WASM crashes
+            // Swallows the Vapi `noise-cancellation` request completely without
+            // calling Daily.co's hardware originalUpdate, thereby preventing the
+            // 22-second enumerateDevices microphone thread deadlock while still
+            // successfully protecting against the WASM_OR_WORKER_NOT_READY crash.
             // ----------------------------------------------------------------------
+            vapi.on('call-start-progress', (e) => {
+                if (e.stage === 'daily-call-object-creation' && e.status === 'completed') {
+                    const dailyCall = vapi.call;
+                    if (dailyCall && typeof dailyCall.updateInputSettings === 'function') {
+                        const originalUpdate = dailyCall.updateInputSettings.bind(dailyCall);
+                        dailyCall.updateInputSettings = async (settings) => {
+                            if (settings?.audio?.processor?.type === 'noise-cancellation') {
+                                console.warn('VAPI Patched: Safely swallowed Krisp noise-cancellation request to prevent WASM crash & mic deadlock.');
+                                return Promise.resolve(); // Swallow it! Do NOT touch originalUpdate
+                            }
+                            return originalUpdate(settings);
+                        };
+                    }
+                }
+            });
 
             vapi.on('call-end', () => {
                 isStartingRef.current = false;
