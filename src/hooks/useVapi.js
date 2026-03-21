@@ -51,27 +51,14 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
             });
 
             // ----------------------------------------------------------------------
-            // CRITICAL FIX: Safe WebRTC Intercept for Krisp WASM crashes
-            // Swallows the Vapi `noise-cancellation` request completely without
-            // calling Daily.co's hardware originalUpdate, thereby preventing the
-            // 22-second enumerateDevices microphone thread deadlock while still
-            // successfully protecting against the WASM_OR_WORKER_NOT_READY crash.
+            // Note: If you experience "WASM_OR_WORKER_NOT_READY" crashes, 
+            // your browser/adblocker is preventing the Krisp noise-cancellation
+            // WASM binaries from downloading.
+            // DO NOT intercept WebRTC hardware tracks here on the frontend!
+            // It causes deadly enumerateDevices lockups or Daily sequence desyncs.
+            // Instead, disable "Background Noise Cancellation" directly inside 
+            // your Vapi Dashboard Voice configuration.
             // ----------------------------------------------------------------------
-            vapi.on('call-start-progress', (e) => {
-                if (e.stage === 'daily-call-object-creation' && e.status === 'completed') {
-                    const dailyCall = vapi.call;
-                    if (dailyCall && typeof dailyCall.updateInputSettings === 'function') {
-                        const originalUpdate = dailyCall.updateInputSettings.bind(dailyCall);
-                        dailyCall.updateInputSettings = async (settings) => {
-                            if (settings?.audio?.processor?.type === 'noise-cancellation') {
-                                console.warn('VAPI Patched: Safely swallowed Krisp noise-cancellation request to prevent WASM crash & mic deadlock.');
-                                return Promise.resolve(); // Swallow it! Do NOT touch originalUpdate
-                            }
-                            return originalUpdate(settings);
-                        };
-                    }
-                }
-            });
 
             vapi.on('call-end', () => {
                 isStartingRef.current = false;
