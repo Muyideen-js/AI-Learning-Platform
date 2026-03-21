@@ -172,10 +172,10 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
             // so the AI greets naturally based on the conversation state.
             let assistantOverrides = undefined;
             if (context && context.chatHistory) {
+                // To prevent WebRTC crashes, we will ONLY pass variable values, 
+                // and avoid overriding firstMessageMode which causes instant hangups
+                // if the assistant model on the dashboard is not explicitly configured for it.
                 assistantOverrides = {
-                    // Let the model generate a contextual greeting instead of a hardcoded one
-                    firstMessageMode: 'assistant-speaks-first-with-model-generated-message',
-                    // Inject context as template variables that the model can reference
                     variableValues: {
                         companionName: context.companionName || 'Tutor',
                         topic: context.topic || 'the subject',
