@@ -140,7 +140,19 @@ pre {
 }
 
 .grid-3 {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 1024px) {
+  .grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
 }
 
 .grid-4 {
@@ -287,10 +299,7 @@ pre {
     font-size: 1.1rem;
   }
 
-  .main-content {
-    /* padding-top: 70px; */
-    /* Removed for mobile */
-  }
+  /* Removed for mobile padding-top */
 
   .page-container {
     padding: 0 24px;
