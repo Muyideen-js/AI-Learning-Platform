@@ -1442,13 +1442,15 @@
    ========================================== */
 
 .curriculum-presession {
-    max-width: 800px;
+    max-width: 960px;
+    width: 100%;
     margin: 0 auto;
+    padding: 0 16px;
 }
 
 .curriculum-presession-title {
     font-size: 0.85rem;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
     text-align: center;
     font-weight: 600;
     text-transform: uppercase;
@@ -1459,7 +1461,7 @@
 .module-cards-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .module-card-wide {
@@ -1467,6 +1469,7 @@
     background: var(--bg-secondary);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
+    width: 100%;
 }
 
 .module-card-wide.locked {
