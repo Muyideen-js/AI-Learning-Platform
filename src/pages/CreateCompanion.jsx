@@ -96,10 +96,16 @@ const CreateCompanion = () => {
       } catch (curriculumError) {
         console.error('Curriculum generation failed:', curriculumError);
         // Fallback: Create basic 8-module curriculum
-        const fallbackCurriculum = Array.from({ length: 8 }, (_, i) => ({
+        const fallbackCurriculum = Array.from({ length: 5 }, (_, i) => ({
           id: i + 1,
-          title: `Module ${i + 1}`,
+          title: `Module ${i + 1}: Core Concepts`,
           description: `Learn about ${data.topic} - Part ${i + 1}`,
+          subtopics: [
+            { id: 1, title: 'Introduction', description: 'Basics and fundamentals.' },
+            { id: 2, title: 'Deep Dive', description: 'Detailed exploration.' },
+            { id: 3, title: 'Practical Application', description: 'Real world examples.' },
+            { id: 4, title: 'Summary', description: 'Review of the material.' }
+          ],
           quiz: { questions: [] }
         }));
         

@@ -243,7 +243,7 @@ export const generateCurriculumWithQuizzes = async (topic, description, numberOf
 
         const model = cachedModelName;
         const version = "v1beta";
-        const cappedModules = Math.min(numberOfModules, 5); // Hard cap to prevent token truncation
+        const cappedModules = Math.min(numberOfModules, 4); // Hard cap to prevent token truncation
 
         const prompt = `Create a ${difficulty} level learning curriculum for: "${topic}"
 
@@ -253,25 +253,22 @@ Generate EXACTLY ${cappedModules} progressive modules. Each module MUST contain 
 
 IMPORTANT: Each module must have a UNIQUE, SPECIFIC title. DO NOT use generic titles like "Module 1".
 
-Example for "HTML Basics":
-- Module: "HTML Tags & Elements" → subtopics: "The p tag", "Closing tags", "Heading hierarchy", "Nesting elements"
-
 Return ONLY valid JSON:
 {
   "modules": [
     {
       "id": 1,
-      "title": "Specific Module Title",
-      "description": "What students learn",
+      "title": "Module Title",
+      "description": "Short description",
       "subtopics": [
-        { "id": 1, "title": "Subtopic title", "description": "Brief description of this subtopic" },
-        { "id": 2, "title": "Subtopic title", "description": "Brief description" },
-        { "id": 3, "title": "Subtopic title", "description": "Brief description" },
-        { "id": 4, "title": "Subtopic title", "description": "Brief description" }
+        { "id": 1, "title": "Subtopic title", "description": "Short description" },
+        { "id": 2, "title": "Subtopic title", "description": "Short description" },
+        { "id": 3, "title": "Subtopic title", "description": "Short description" },
+        { "id": 4, "title": "Subtopic title", "description": "Short description" }
       ],
       "quiz": {
         "questions": [
-          { "question": "?", "options": ["A","B","C","D"], "correctAnswer": 0, "explanation": "Why" }
+          { "question": "?", "options": ["A","B","C","D"], "correctAnswer": 0 }
         ]
       }
     }
@@ -280,10 +277,11 @@ Return ONLY valid JSON:
 
 Requirements:
 - ${cappedModules} modules total
-- Each module: UNIQUE title, detailed description, exactly 4 subtopics
+- Each module: UNIQUE title, short description, exactly 4 subtopics
 - Subtopics must be granular learning objectives
-- Each quiz: EXACTLY 3 multiple-choice questions
-- Progressive difficulty`;
+- Each quiz: EXACTLY 2 multiple-choice questions (no explanation needed)
+- Progressive difficulty
+- Keep ALL descriptions under 12 words to save space`;
 
         const requestBody = {
             contents: [
@@ -314,7 +312,7 @@ Requirements:
 
         if (!text) throw new Error("Empty response");
 
-        // Parse JSON using Regex to bypass markdown and conversational wrap
+        // Parse JSON
         let jsonStr = text;
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
@@ -325,28 +323,38 @@ Requirements:
         try {
             curriculum = JSON.parse(jsonStr);
         } catch (parseError) {
-            console.warn("Curriculum JSON parse failed, attempting recovery...", parseError.message);
-            // If the JSON is truncated, try simple recovery strategies
+            console.warn("Curriculum JSON parse failed, attempting aggressive recovery...");
+            // Aggressively recover truncated JSON by trimming chars from the end and appending closures
             let recovered = false;
-            let recoveryStr = jsonStr.replace(/,\s*$/, ''); // Remove trailing comma if present
+            let strToFix = jsonStr;
             
-            const strategies = [
-                recoveryStr + ']}',
-                recoveryStr + '}]}',
-                recoveryStr + ']}]}'
-            ];
-            
-            for (const strategy of strategies) {
-                try {
-                    curriculum = JSON.parse(strategy);
-                    recovered = true;
-                    console.log("Curriculum JSON successfully recovered");
-                    break;
-                } catch(e) { /* ignore */ }
+            // Try up to 250 times (trimming up to 250 chars)
+            for (let i = 0; i < 250; i++) {
+                if (strToFix.length < 10) break;
+                
+                // Add quotes if we split in middle of a string, or close open arrays/objects
+                const closures = [
+                    '', '}', ']}', '}]}', ']}]}', '"}', '"]}', '"}]}', '"]}]}'
+                ];
+                
+                for (const suffix of closures) {
+                    try {
+                        curriculum = JSON.parse(strToFix + suffix);
+                        recovered = true;
+                        break;
+                    } catch(e) { /* ignore */ }
+                }
+                
+                if (recovered) break;
+                // Trim one char from the end
+                strToFix = strToFix.slice(0, -1);
             }
             
             if (!recovered) {
+                console.error("Aggressive JSON recovery failed for payload size:", jsonStr.length);
                 throw new Error("Could not parse or recover JSON: " + parseError.message);
+            } else {
+                console.log("Curriculum JSON successfully recovered via aggressive trimming.");
             }
         }
 
