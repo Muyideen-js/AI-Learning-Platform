@@ -689,6 +689,10 @@ const CompanionSession = () => {
     setAttachedFile(null);
   };
 
+  const handleCodeChecked = (resultMarkdown) => {
+    addMessage(resultMarkdown, 'ai');
+  };
+
   const handleSendMessage = async () => {
     if ((!inputText.trim() && !attachedFile) || isProcessing) return;
     
@@ -992,6 +996,17 @@ const CompanionSession = () => {
                   <StopCircle size={14} />
                 </button>
               </div>
+            )}
+            
+            {isCodingCompanion && (
+              <button 
+                className={`btn-show ${showCodeSandbox ? 'active' : ''}`}
+                onClick={() => setShowCodeSandbox(!showCodeSandbox)}
+                title="Toggle Code Sandbox"
+                style={{ background: showCodeSandbox ? '#6c5cff' : 'transparent', color: showCodeSandbox ? '#fff' : 'var(--text-primary)', borderColor: showCodeSandbox ? '#6c5cff' : 'var(--text-primary)' }}
+              >
+                &lt;/&gt; {showCodeSandbox ? 'Hide Code' : 'Code'}
+              </button>
             )}
             
             {companion?.curriculum && companion.curriculum.length > 0 && (
@@ -1404,16 +1419,6 @@ const CompanionSession = () => {
                     >
                       <Paperclip size={16} />
                     </button>
-                    {isCodingCompanion && (
-                      <button 
-                        className={`input-btn ${showCodeSandbox ? 'active' : ''}`}
-                        onClick={() => setShowCodeSandbox(!showCodeSandbox)}
-                        title="Toggle Code Sandbox"
-                        style={{ color: showCodeSandbox ? '#6c5cff' : 'var(--text-secondary)' }}
-                      >
-                        &lt;/&gt;
-                      </button>
-                    )}
                     <textarea
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
@@ -1471,6 +1476,7 @@ const CompanionSession = () => {
           companion={companion}
           currentModule={companion?.curriculum?.find(m => m.id === currentModuleId)}
           lastAiMessage={transcript.filter(m => m.sender === 'ai').pop()?.text}
+          onCodeChecked={handleCodeChecked}
         />
       )}
       

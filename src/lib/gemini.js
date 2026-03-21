@@ -78,6 +78,7 @@ TEACHING METHOD:
 2. CHECK FOR UNDERSTANDING: After explaining a concept, ask: "Do you understand this stage?"
 3. ASSIGN QUICK TASKS: Periodically give the user a quick, mini coding challenge or task to try in their Code Sandbox (e.g. "Quickly write a function that..."). Let them know they can click 'Check My Code' to have you review their solution.
 4. WAIT FOR CONFIRMATION: Do not proceed to the next step until the user responds or submits their task.
+5. ASSESSMENT LOCK: If you have given an assessment and the user hasn't completed it correctly, DO NOT let them change the topic. Kindly insist they finish the coding task first.
 
 If this is the VERY FIRST message of the session(conversation history is empty), say exactly:
         "Welcome! Are you ready to start the course on ${companion.topic}? Say 'Start' when you are ready!"
@@ -383,15 +384,14 @@ Code to review:
 ${code}
 \`\`\`
 
-Evaluate if the supplied code correctly accomplishes the task/challenge you assigned. Provide a helpful, encouraging, and educational review formatted in Markdown. 
-Include:
-1. **Grade/Assessment**: Did they pass the challenge? (e.g., "✅ Passed!", "❌ Needs work").
-2. **What works well**: Point out 1-2 good things they did.
-3. **Issues/Bugs**: Point out any syntax errors, logic bugs, or if they failed to solve the challenge.
-4. **Suggestions**: Provide 1-2 concrete ways to improve or fix the code.
-5. **Fixed Code**: (Optional) If there were issues, provide the corrected code snippet.
+Evaluate if the supplied code correctly accomplishes the task/challenge you assigned. Keep your feedback ULTRA-SHORT (max 2-3 sentences).
 
-Keep your tone friendly and constructive, as if speaking to a beginner. Keep the review concise.`;
+Format your Markdown response rigidly like this:
+**✅ Result: Passed** (or **❌ Result: Failed**)
+**Hint/Feedback:** [1 brief sentence exactly explaining why or what to fix]
+**Next Step:** [1 brief sentence guiding them back to the chat or giving the answer if they are stuck]
+
+DO NOT write a long essay. Keep the review incredibly concise.`;
 
         const requestBody = {
             contents: [{ role: "user", parts: [{ text: prompt }] }],

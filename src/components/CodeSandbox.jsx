@@ -38,25 +38,25 @@ const LANGUAGE_OPTIONS = [
 ];
 
 const STARTER_CODE = {
-  javascript: `// Write your JavaScript code here\nconsole.log("Hello, World!");\n`,
-  typescript: `// Write your TypeScript code here\nconst greeting: string = "Hello, World!";\nconsole.log(greeting);\n`,
-  html: `<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: sans-serif; padding: 20px; }\n    h1 { color: #333; }\n  </style>\n</head>\n<body>\n  <h1>Hello, World!</h1>\n  <p>Edit this HTML and click Run.</p>\n</body>\n</html>`,
-  css: `/* Write your CSS here */\nbody {\n  font-family: sans-serif;\n  background: #f0f0f0;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n}\n`,
-  python: `# Write your Python code here\n# Note: Python runs in a simulated console\nprint("Hello, World!")\n`,
-  java: `// Java code (preview only)\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}\n`,
-  cpp: `// C++ code (preview only)\n#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello, World!" << endl;\n    return 0;\n}\n`,
-  csharp: `// C# code (preview only)\nusing System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, World!");\n    }\n}\n`,
-  php: `<?php\n// PHP code (preview only)\necho "Hello, World!";\n?>\n`,
-  sql: `-- Write your SQL queries here\nSELECT 'Hello, World!' AS greeting;\n`,
-  go: `// Go code (preview only)\npackage main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, World!")\n}\n`,
-  rust: `// Rust code (preview only)\nfn main() {\n    println!("Hello, World!");\n}\n`,
+  javascript: `// Write your JavaScript code here\n`,
+  typescript: `// Write your TypeScript code here\n`,
+  html: `<!-- Write your HTML structure here -->\n`,
+  css: `/* Write your CSS styles here */\n`,
+  python: `# Write your Python code here\n`,
+  java: `// Write your Java code here\n`,
+  cpp: `// Write your C++ code here\n`,
+  csharp: `// Write your C# code here\n`,
+  php: `<?php\n// Write your PHP code here\n?>\n`,
+  sql: `-- Write your SQL queries here\n`,
+  go: `// Write your Go code here\n`,
+  rust: `// Write your Rust code here\n`,
 };
 
 /**
  * AI Code Sandbox — Monaco editor + live preview + Gemini code review.
  * Only rendered for coding-related companions.
  */
-const CodeSandbox = ({ isOpen, onClose, companion, currentModule, lastAiMessage }) => {
+const CodeSandbox = ({ isOpen, onClose, companion, currentModule, lastAiMessage, onCodeChecked }) => {
   const defaultLang = detectLanguage(companion?.topic, companion?.subject);
   const [language, setLanguage] = useState(defaultLang);
   const [code, setCode] = useState(STARTER_CODE[defaultLang] || STARTER_CODE.javascript);
@@ -84,11 +84,7 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule, lastAiMessage 
       if (language === 'html') {
         // HTML: render in iframe
         if (iframeRef.current) {
-          const iframe = iframeRef.current;
-          const doc = iframe.contentDocument || iframe.contentWindow.document;
-          doc.open();
-          doc.write(code);
-          doc.close();
+          iframeRef.current.srcdoc = code;
           setOutput('__HTML_RENDERED__');
         }
       } else if (language === 'javascript' || language === 'typescript') {
@@ -117,11 +113,7 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule, lastAiMessage 
         // CSS: wrap in HTML and render
         const htmlWrapper = `<!DOCTYPE html><html><head><style>${code}</style></head><body><div class="demo"><h1>CSS Preview</h1><p>Your styles are applied to this page.</p><button>Sample Button</button></div></body></html>`;
         if (iframeRef.current) {
-          const iframe = iframeRef.current;
-          const doc = iframe.contentDocument || iframe.contentWindow.document;
-          doc.open();
-          doc.write(htmlWrapper);
-          doc.close();
+          iframeRef.current.srcdoc = htmlWrapper;
           setOutput('__HTML_RENDERED__');
         }
       } else {
@@ -148,6 +140,9 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule, lastAiMessage 
         : '';
       const result = await reviewCode(code, language, moduleContext, lastAiMessage);
       setReview(result);
+      if (onCodeChecked) {
+        onCodeChecked(result);
+      }
     } catch (err) {
       setReview(`❌ Failed to get AI review: ${err.message}`);
     } finally {
