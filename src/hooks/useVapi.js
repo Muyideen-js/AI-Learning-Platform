@@ -51,28 +51,9 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
             });
 
             // ----------------------------------------------------------------------
-            // CRITICAL FIX: Intercept Daily.co WebRTC to prevent Krisp WASM crashes
-            // Vapi SDK v2.5.2 hardcodes `type: 'noise-cancellation'` which crashes on
-            // some browsers/setups with "WASM_OR_WORKER_NOT_READY".
-            // We intercept the internal Daily call object right after it's created.
+            // Removed previous WebRTC input settings hack as it caused
+            // microphone thread deadlocks (enumerateDevices timeout) for standard clients.
             // ----------------------------------------------------------------------
-            vapi.on('call-start-progress', (e) => {
-                if (e.stage === 'daily-call-object-creation' && e.status === 'completed') {
-                    // vapi.call is the underlying Daily.co instance
-                    const dailyCall = vapi.call;
-                    if (dailyCall && typeof dailyCall.updateInputSettings === 'function') {
-                        const originalUpdate = dailyCall.updateInputSettings.bind(dailyCall);
-                        dailyCall.updateInputSettings = async (settings) => {
-                            // If VAPI tries to force Krisp, change it to 'none'
-                            if (settings?.audio?.processor?.type === 'noise-cancellation') {
-                                console.warn('VAPI Patched: Preventing Krisp noise-cancellation from loading to stop WASM crash.');
-                                settings.audio.processor.type = 'none';
-                            }
-                            return originalUpdate(settings);
-                        };
-                    }
-                }
-            });
 
             vapi.on('call-end', () => {
                 isStartingRef.current = false;
