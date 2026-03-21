@@ -170,23 +170,12 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
             // so the AI continues from where the text conversation left off.
             // We use variableValues for context and a model-generated first message
             // so the AI greets naturally based on the conversation state.
-            let assistantOverrides = undefined;
-            if (context && context.chatHistory) {
-                // To prevent WebRTC crashes, we will ONLY pass variable values, 
-                // and avoid overriding firstMessageMode which causes instant hangups
-                // if the assistant model on the dashboard is not explicitly configured for it.
-                assistantOverrides = {
-                    variableValues: {
-                        companionName: context.companionName || 'Tutor',
-                        topic: context.topic || 'the subject',
-                        moduleName: context.moduleName || '',
-                        chatContext: context.chatHistory
-                    }
-                };
-            }
-
             // Start with the pre-configured assistant from VAPI dashboard.
-            await vapi.start(assistantId, assistantOverrides);
+            // Note: We intentionally avoid passing `assistantOverrides` or `variableValues`
+            // here because if the VAPI Dashboard Assistant does NOT explicitly declare those
+            // precise template variable parameters, the VAPI WebRTC backend will instantly crash
+            // the connection and terminate the Daily.co meeting.
+            await vapi.start(assistantId);
         } catch (err) {
             console.error('Failed to start VAPI call:', err);
             isStartingRef.current = false;
