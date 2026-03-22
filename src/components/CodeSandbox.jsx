@@ -60,6 +60,9 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule, lastAiMessage,
   const defaultLang = detectLanguage(companion?.topic, companion?.subject);
   const [language, setLanguage] = useState(defaultLang);
   const [code, setCode] = useState(STARTER_CODE[defaultLang] || STARTER_CODE.javascript);
+  const [cssCode, setCssCode] = useState(STARTER_CODE.css);
+  const [jsCode, setJsCode] = useState(STARTER_CODE.javascript);
+  const [activeFile, setActiveFile] = useState('html'); // 'html', 'css', 'js'
   const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
@@ -82,9 +85,10 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule, lastAiMessage,
 
     try {
       if (language === 'html') {
-        // HTML: render in iframe
+        // HTML: render in iframe combining HTML + CSS + JS
+        const fullHtml = `<!DOCTYPE html><html><head><style>${cssCode}</style></head><body>${code}<script>${jsCode}</script></body></html>`;
         if (iframeRef.current) {
-          iframeRef.current.srcdoc = code;
+          iframeRef.current.srcdoc = fullHtml;
           setOutput('__HTML_RENDERED__');
         }
       } else if (language === 'javascript' || language === 'typescript') {
@@ -138,7 +142,10 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule, lastAiMessage,
       const moduleContext = currentModule
         ? `Module ${currentModule.id}: ${currentModule.title} — ${currentModule.description}`
         : '';
-      const result = await reviewCode(code, language, moduleContext, lastAiMessage);
+      const payloadCode = language === 'html'
+        ? `<!-- index.html -->\n${code}\n\n/* style.css */\n${cssCode}\n\n// script.js\n${jsCode}`
+        : code;
+      const result = await reviewCode(payloadCode, language, moduleContext, lastAiMessage);
       setReview(result);
       if (onCodeChecked) {
         onCodeChecked(result);
@@ -161,6 +168,11 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule, lastAiMessage,
 
   const handleClear = () => {
     setCode(STARTER_CODE[language] || '');
+    if (language === 'html') {
+      setCssCode(STARTER_CODE.css);
+      setJsCode(STARTER_CODE.javascript);
+      setActiveFile('html');
+    }
     setOutput('');
     setReview(null);
   };
@@ -228,13 +240,38 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule, lastAiMessage,
       {/* Editor + Output */}
       <div className="sandbox-body">
         {/* Code Editor */}
-        <div className="sandbox-editor">
-          <Editor
-            height="100%"
-            language={language}
-            value={code}
-            onChange={(val) => setCode(val || '')}
-            onMount={handleEditorMount}
+        <div className="sandbox-editor" style={{ display: 'flex', flexDirection: 'column' }}>
+          {language === 'html' && (
+            <div className="editor-file-tabs" style={{ display: 'flex', background: '#1e1e1e', borderBottom: '1px solid #333' }}>
+              <button 
+                className="file-tab" style={{ padding: '6px 16px', background: activeFile === 'html' ? '#2d2d2d' : 'transparent', color: activeFile === 'html' ? '#e44d26' : '#888', border: 'none', borderTop: activeFile === 'html' ? '2px solid #e44d26' : '2px solid transparent', cursor: 'pointer', fontSize: '13px' }}
+                onClick={() => setActiveFile('html')}
+              >index.html</button>
+              <button 
+                className="file-tab" style={{ padding: '6px 16px', background: activeFile === 'css' ? '#2d2d2d' : 'transparent', color: activeFile === 'css' ? '#2965f1' : '#888', border: 'none', borderTop: activeFile === 'css' ? '2px solid #2965f1' : '2px solid transparent', cursor: 'pointer', fontSize: '13px' }}
+                onClick={() => setActiveFile('css')}
+              >style.css</button>
+              <button 
+                className="file-tab" style={{ padding: '6px 16px', background: activeFile === 'js' ? '#2d2d2d' : 'transparent', color: activeFile === 'js' ? '#f0db4f' : '#888', border: 'none', borderTop: activeFile === 'js' ? '2px solid #f0db4f' : '2px solid transparent', cursor: 'pointer', fontSize: '13px' }}
+                onClick={() => setActiveFile('js')}
+              >script.js</button>
+            </div>
+          )}
+          <div style={{ flex: 1, position: 'relative' }}>
+            <Editor
+              height="100%"
+              language={language === 'html' ? (activeFile === 'html' ? 'html' : activeFile === 'css' ? 'css' : 'javascript') : language}
+              value={language === 'html' ? (activeFile === 'html' ? code : activeFile === 'css' ? cssCode : jsCode) : code}
+              onChange={(val) => {
+                if (language === 'html') {
+                  if (activeFile === 'html') setCode(val || '');
+                  else if (activeFile === 'css') setCssCode(val || '');
+                  else setJsCode(val || '');
+                } else {
+                  setCode(val || '');
+                }
+              }}
+              onMount={handleEditorMount}
             theme="vs-dark"
             options={{
               minimap: { enabled: false },
@@ -255,6 +292,7 @@ const CodeSandbox = ({ isOpen, onClose, companion, currentModule, lastAiMessage,
               },
             }}
           />
+          </div>
         </div>
 
         {/* Output Panel */}

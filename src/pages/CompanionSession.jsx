@@ -4,10 +4,11 @@ import { doc, getDoc, collection, addDoc, updateDoc, setDoc, increment, query, w
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateAIResponse as getAIResponse } from '../lib/gemini';
-import { ArrowLeft, Mic, Crown, Volume2, Send, Paperclip, Copy, RotateCcw, Pause, StopCircle, ArrowDown, X, FileText, Image as ImageIcon, Star, ChevronDown, Zap } from 'lucide-react';
+import { ArrowLeft, Mic, Crown, Volume2, Send, Paperclip, Copy, RotateCcw, Pause, StopCircle, ArrowDown, X, FileText, Image as ImageIcon, Star, ChevronDown, Zap, Youtube } from 'lucide-react';
 import ChatRobot from '../components/ChatRobot';
 import VoiceModal from '../components/VoiceModal';
 import QuizModal from '../components/QuizModal';
+import VideoModal from '../components/VideoModal';
 import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import useVapi from '../hooks/useVapi';
@@ -89,7 +90,10 @@ const CompanionSession = () => {
   const [unlockedModuleId, setUnlockedModuleId] = useState(null);
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [quizModuleId, setQuizModuleId] = useState(null);
-  const [quizScores, setQuizScores] = useState({}); // { moduleId: score }
+  const [quizScores, setQuizScores] = useState({});
+
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [videoSearchQuery, setVideoSearchQuery] = useState(''); // { moduleId: score }
 
   // Rating state
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -786,7 +790,6 @@ const CompanionSession = () => {
       }
       
       setSessionStarted(false);
-      setMode('text');
       navigate('/my-journey');
     } catch (error) {
       console.error('Error ending session:', error);
@@ -1551,6 +1554,18 @@ const CompanionSession = () => {
                             >
                               <RotateCcw size={14} />
                             </button>
+                            <button 
+                              className="action-btn" 
+                              onClick={() => {
+                                // Extract a relevant topic query from the message text
+                                const cleaned = msg.text.replace(/```[\s\S]*?```/g, '').substring(0, 100);
+                                setVideoSearchQuery(companion.topic + " " + cleaned);
+                                setShowVideoModal(true);
+                              }}
+                              title="Watch Video Explanation"
+                            >
+                              <Youtube size={14} />
+                            </button>
                           </div>
                         )}
                       </div>
@@ -1699,6 +1714,14 @@ const CompanionSession = () => {
           }));
         }}
       />
+      
+      {/* Video Overlay Fallback */}
+      <VideoModal
+        isOpen={showVideoModal}
+        onClose={() => setShowVideoModal(false)}
+        query={videoSearchQuery}
+      />
+      
       <Toast toasts={toasts} />
     </div>
   );
