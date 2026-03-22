@@ -219,6 +219,36 @@ const CompanionSession = () => {
     fetchRatings();
   }, [id, currentUser]);
 
+  // Auto-expand active module and set current module on load
+  useEffect(() => {
+    if (companion?.curriculum && Object.keys(expandedModules).length === 0) {
+      let activeModId = 1;
+      const progressData = companion.moduleProgress || [];
+      
+      for (const mod of companion.curriculum) {
+        let unlocked = false;
+        if (mod.id === 1) unlocked = true;
+        else {
+          const prevProgress = progressData.find(p => p.moduleId === mod.id - 1);
+          if (prevProgress) {
+            const hasEnoughStudy = (prevProgress.totalMessages || 0) >= 10 && (prevProgress.totalTime || 0) >= 60;
+            const quizPassed = (prevProgress.quizScore || 0) >= 70;
+            unlocked = hasEnoughStudy && quizPassed;
+          }
+        }
+        
+        if (unlocked) {
+          const completed = progressData.find(p => p.moduleId === mod.id)?.completed || false;
+          activeModId = mod.id;
+          if (!completed) break; // found the highest unlocked and not completed module
+        }
+      }
+      
+      setExpandedModules({ [activeModId]: true });
+      setCurrentModuleId(activeModId);
+    }
+  }, [companion, expandedModules]);
+
   // Load module sessions to show Continue vs Start Lesson
   useEffect(() => {
     const loadModuleSessions = async () => {
@@ -653,8 +683,10 @@ const CompanionSession = () => {
   
   // Helper: Check if module is completed
   const isModuleCompleted = (moduleId) => {
-    const progress = moduleProgress.find(p => p.moduleId === moduleId);
-    return progress && progress.completed;
+    const localProgress = moduleProgress.find(p => p.moduleId === moduleId);
+    if (localProgress && localProgress.completed) return true;
+    const dbProgress = (companion?.moduleProgress || []).find(p => p.moduleId === moduleId);
+    return dbProgress && dbProgress.completed;
   };
   
   // Switch to a different module
@@ -1574,9 +1606,10 @@ const CompanionSession = () => {
                             <button 
                               className="action-btn" 
                               onClick={() => {
+                                const activeModule = companion?.curriculum?.find(m => m.id === currentModuleId);
                                 setActiveVideoMessage({ 
                                   text: msg.text, 
-                                  topic: currentModule?.title || companion.topic 
+                                  topic: activeModule?.title || companion.topic 
                                 });
                                 setShowVideoModal(true);
                               }}
