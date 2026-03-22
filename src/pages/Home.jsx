@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Sparkles, Library } from 'lucide-react';
+import { Sparkles, Library, Flame } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -9,7 +9,7 @@ import HomeRobot from '../components/HomeRobot';
 import './Home.css';
 
 const Home = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, userData } = useAuth();
   const [popularCompanions, setPopularCompanions] = useState([]);
   const [recentSessions, setRecentSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +68,15 @@ const Home = () => {
 
   return (
     <div className="home-page">
-      <div className="home-hero">
+      <div className="home-hero" style={{ position: 'relative' }}>
+        {currentUser && (
+          <div style={{ position: 'absolute', top: '24px', right: '32px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffaa00', fontWeight: '800', fontSize: '20px', zIndex: 10 }}>
+            <div className="fire-animate" style={{ display: 'flex' }}>
+              <Flame size={28} color="#ffaa00" strokeWidth={2.5} fill="#ffaa00" />
+            </div>
+            <span>{userData?.streakCount || 0}</span>
+          </div>
+        )}
         <HomeRobot />
         <h1 className="home-title">Learn with AI Companions</h1>
         <p className="home-subtitle">
