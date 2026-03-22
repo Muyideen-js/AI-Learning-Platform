@@ -70,9 +70,12 @@ const Home = () => {
     <div className="home-page">
       <div className="home-hero" style={{ position: 'relative' }}>
         {currentUser && (
-          <div style={{ position: 'absolute', top: '24px', right: '32px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffaa00', fontWeight: '800', fontSize: '20px', zIndex: 10 }}>
-            <div className="fire-animate" style={{ display: 'flex' }}>
-              <Flame size={28} color="#ffaa00" strokeWidth={2.5} fill="#ffaa00" />
+          <div style={{ position: 'absolute', top: '24px', right: '32px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffaa00', fontWeight: '800', fontSize: '24px', zIndex: 10, textShadow: '0 0 10px rgba(255,170,0,0.5)' }}>
+            <div className="amazing-fire">
+              <div className="flame-main"></div>
+              <div className="flame-middle"></div>
+              <div className="flame-inner"></div>
+              <div className="flame-bottom"></div>
             </div>
             <span>{userData?.streakCount || 0}</span>
           </div>

@@ -88,7 +88,13 @@ const VideoModal = ({ isOpen, onClose, topic, text, companionName }) => {
 
   const playTextSentences = (sentences, sIndex, accumulatedContent, bIndex) => {
     if (sIndex >= sentences.length) {
-      const newAcc = accumulatedContent + blocks[bIndex].content + '\n\n';
+      // Calculate how many slashes to add, or just take the original block and format it
+      const commentBlock = blocks[bIndex].content
+        .split('\n')
+        .map(l => l.trim() ? `// ${l.trim()}` : '')
+        .join('\n');
+      
+      const newAcc = accumulatedContent + commentBlock + '\n\n';
       setVisibleContent(newAcc);
       playBlock(bIndex + 1, newAcc);
       return;
@@ -96,9 +102,8 @@ const VideoModal = ({ isOpen, onClose, topic, text, companionName }) => {
 
     const sentence = sentences[sIndex];
     
-    // Update visual text immediately for this sentence
-    // Find the original sentence in the markdown to preserve formatting
-    const newAcc = accumulatedContent + (sIndex === 0 ? blocks[bIndex].content.substring(0, blocks[bIndex].content.indexOf(sentence) + sentence.length) : ' ' + sentence);
+    // Type the sentence as a comment
+    const newAcc = accumulatedContent + '// ' + sentence + '\n';
     setVisibleContent(newAcc);
 
     const utterance = new SpeechSynthesisUtterance(sentence);
@@ -227,24 +232,72 @@ const VideoModal = ({ isOpen, onClose, topic, text, companionName }) => {
             </div>
           </div>
           
-          <div className="presentation-screen split-right">
-             <div className="screen-content markdown-body">
-               {visibleContent ? (
-                 <ReactMarkdown>{visibleContent}</ReactMarkdown>
-               ) : (
-                 <p className="paused-text" style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: '40px' }}>
-                   {isPlaying ? 'Initializing presentation...' : 'Press Play to begin the lesson.'}
-                 </p>
-               )}
-               {activeCodeBlock && (
-                 <div className="live-typing-code">
-                   <div className="code-header">
-                     <span className="code-lang">{activeCodeBlock.language || 'code'}</span>
-                     <span className="live-badge">Live Typing...</span>
-                   </div>
-                   <pre><code>{currentCodeTyping}<span className="cursor-blink">|</span></code></pre>
+          <div className="presentation-screen split-right vscode-theme">
+             <div className="vscode-window">
+               <div className="vscode-titlebar">
+                 <div className="mac-buttons">
+                   <span className="mac-btn close"></span>
+                   <span className="mac-btn min"></span>
+                   <span className="mac-btn max"></span>
                  </div>
-               )}
+                 <div className="vscode-title">lesson-workspace - Visual Studio Code</div>
+               </div>
+               
+               <div className="vscode-main">
+                 <div className="vscode-activity-bar">
+                   <div className="activity-icon active">📄</div>
+                   <div className="activity-icon">🔍</div>
+                   <div className="activity-icon">⚡</div>
+                   <div className="activity-icon">⚙️</div>
+                 </div>
+                 <div className="vscode-sidebar">
+                   <div className="sidebar-title">EXPLORER</div>
+                   <div className="explorer-section">
+                     <div className="explorer-header">▼ LEARNING-MODULE</div>
+                     <div className="explorer-item active">
+                       <span className="file-icon">📄</span> tutorial.js
+                     </div>
+                     <div className="explorer-item">
+                       <span className="file-icon"></span> index.html
+                     </div>
+                     <div className="explorer-item">
+                       <span className="file-icon"></span> style.css
+                     </div>
+                   </div>
+                 </div>
+                 <div className="vscode-editor">
+                   <div className="vscode-tabs">
+                     <div className="vscode-tab active">
+                        <span className="file-icon">📄</span> tutorial.js
+                        <span className="tab-close">×</span>
+                     </div>
+                   </div>
+                   
+                   <div className="vscode-editor-content">
+                     <div className="vscode-line-numbers">
+                       {Array.from({ length: Math.max(20, (visibleContent + currentCodeTyping).split('\n').length + 5) }).map((_, i) => (
+                         <div key={i} className="line-num">{i + 1}</div>
+                       ))}
+                     </div>
+                     <div className="vscode-code-area">
+                       {visibleContent || currentCodeTyping ? (
+                         <pre><code>
+                           <span className="code-comments">{visibleContent}</span>
+                           {activeCodeBlock && (
+                             <span className="live-typing">
+                               {currentCodeTyping}<span className="cursor-blink">|</span>
+                             </span>
+                           )}
+                         </code></pre>
+                       ) : (
+                         <div className="paused-text" style={{ paddingLeft: '8px' }}>
+                           {isPlaying ? '// Initializing tutorial workspace...' : '// Press Play to begin the lesson.'}
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                 </div>
+               </div>
              </div>
           </div>
         </div>
