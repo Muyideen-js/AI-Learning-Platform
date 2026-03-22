@@ -255,6 +255,23 @@ const CompanionSession = () => {
     loadModuleSessions();
   }, [currentUser, companion, id]);
 
+  // Fetch user's existing cumulative XP for this companion
+  useEffect(() => {
+    const fetchUserXP = async () => {
+      if (!currentUser || !id) return;
+      try {
+        const leaderboardRef = doc(db, 'companions', id, 'leaderboard', currentUser.uid);
+        const docSnap = await getDoc(leaderboardRef);
+        if (docSnap.exists() && typeof docSnap.data().xp === 'number') {
+          setSessionXP(docSnap.data().xp);
+        }
+      } catch (err) {
+        console.error('Error fetching user XP:', err);
+      }
+    };
+    fetchUserXP();
+  }, [currentUser, id]);
+
   // Load Leaderboard when tab is active
   useEffect(() => {
     const fetchLeaderboard = async () => {
