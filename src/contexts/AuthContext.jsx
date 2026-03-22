@@ -33,7 +33,33 @@ export const AuthProvider = ({ children }) => {
           // Fetch user data from Firestore
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
-            setUserData(userDoc.data());
+            const data = userDoc.data();
+            
+            // Check daily streak
+            const today = new Date().toISOString().split('T')[0];
+            const lastLogin = data.lastLoginDate;
+            let currentStreak = data.streakCount || 0;
+            let needsUpdate = false;
+
+            if (lastLogin !== today) {
+              const yesterday = new Date();
+              yesterday.setDate(yesterday.getDate() - 1);
+              const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+              if (lastLogin === yesterdayStr) {
+                currentStreak += 1;
+              } else {
+                currentStreak = 1;
+              }
+              needsUpdate = true;
+            }
+
+            const updatedData = { ...data, lastLoginDate: today, streakCount: currentStreak };
+            setUserData(updatedData);
+
+            if (needsUpdate) {
+              await setDoc(doc(db, 'users', user.uid), { lastLoginDate: today, streakCount: currentStreak }, { merge: true });
+            }
           } else {
             // Create user document if it doesn't exist
             const newUserData = {
@@ -43,7 +69,9 @@ export const AuthProvider = ({ children }) => {
               picture: user.photoURL || null,
               createdAt: new Date(),
               subscriptionTier: 'free',
-              bookmarkedCompanions: []
+              bookmarkedCompanions: [],
+              lastLoginDate: new Date().toISOString().split('T')[0],
+              streakCount: 1
             };
             await setDoc(doc(db, 'users', user.uid), newUserData);
             setUserData(newUserData);
@@ -57,7 +85,8 @@ export const AuthProvider = ({ children }) => {
             name: user.displayName || user.email?.split('@')[0] || 'User',
             picture: user.photoURL || null,
             subscriptionTier: 'free',
-            bookmarkedCompanions: []
+            bookmarkedCompanions: [],
+            streakCount: 1
           });
         }
       } else {
@@ -81,7 +110,9 @@ export const AuthProvider = ({ children }) => {
       picture: null,
       createdAt: new Date(),
       subscriptionTier: 'free',
-      bookmarkedCompanions: []
+      bookmarkedCompanions: [],
+      lastLoginDate: new Date().toISOString().split('T')[0],
+      streakCount: 1
     };
     try {
       await setDoc(doc(db, 'users', userCredential.user.uid), userData);
@@ -132,7 +163,9 @@ export const AuthProvider = ({ children }) => {
           picture: user.photoURL || null,
           createdAt: new Date(),
           subscriptionTier: 'free',
-          bookmarkedCompanions: []
+          bookmarkedCompanions: [],
+          lastLoginDate: new Date().toISOString().split('T')[0],
+          streakCount: 1
         };
         try {
           await setDoc(doc(db, 'users', user.uid), userData);

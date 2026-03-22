@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Sparkles, PlusSquare, Home, Library, Menu, X } from 'lucide-react';
+import { LogOut, User, Sparkles, PlusSquare, Home, Library, Menu, X, Flame } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './Navbar.css';
@@ -58,6 +58,12 @@ const Navbar = () => {
                 <User size={14} />
                 <span>Journey</span>
               </Link>
+              
+              {/* Universal Streak Badge */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 160, 0, 0.15)', padding: '6px 14px', borderRadius: '30px', color: '#ffaa00', fontWeight: '700', fontSize: '13px', border: '1px solid rgba(255, 160, 0, 0.3)', marginRight: '8px' }}>
+                <Flame size={16} color="#ffaa00" strokeWidth={2.5} />
+                <span>{userData?.streakCount || 0}</span>
+              </div>
               
               <div className="navbar-user" ref={dropdownRef}>
                 <button

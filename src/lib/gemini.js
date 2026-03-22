@@ -463,3 +463,57 @@ DO NOT write a long essay. Keep the review incredibly concise.`;
         throw new Error('Failed to review code. Please try again.');
     }
 };
+
+/**
+ * Generates an interactive Multiple Choice Quiz based on the exact user conversation.
+ * 
+ * @param {string} moduleTitle - Topic info
+ * @param {string} moduleDescription - Context info
+ * @param {string} conversationTranscript - The raw string representation of the session
+ * @returns {Promise<Array>} - Array of 3 Question Objects
+ */
+export const generateDynamicQuiz = async (moduleTitle, moduleDescription, conversationTranscript) => {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) throw new Error("API key is missing");
+
+    try {
+        const prompt = `You are a strict JSON generator.
+Generate a 3-question Multiple Choice Quiz based EXACTLY on this user's conversation transcript about: ${moduleTitle} (${moduleDescription}).
+
+Transcript of what the user learned:
+${conversationTranscript || 'No transcript available. Generate a generic quiz about the topic.'}
+
+Return ONLY a valid JSON array of 3 objects. Do NOT wrap it in markdown blockquotes like \`\`\`json.
+Each object must have the exact structure:
+[
+  {
+    "question": "The question text",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctAnswer": 0 // The integer index of the correct option (0-3)
+  }
+]`;
+
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: "user", parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.2 },
+                })
+            }
+        );
+
+        if (!response.ok) throw new Error("Dynamic quiz generation failed");
+
+        const data = await response.json();
+        let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        // Clean markdown
+        rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(rawText);
+    } catch (e) {
+        console.error("Quiz generation parsings failed:", e);
+        return null;
+    }
+};

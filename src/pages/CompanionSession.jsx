@@ -93,7 +93,7 @@ const CompanionSession = () => {
   const [quizScores, setQuizScores] = useState({});
 
   const [showVideoModal, setShowVideoModal] = useState(false);
-  const [videoSearchQuery, setVideoSearchQuery] = useState(''); // { moduleId: score }
+  const [activeVideoMessage, setActiveVideoMessage] = useState({ text: '', topic: '' });
 
   // Rating state
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -1574,12 +1574,13 @@ const CompanionSession = () => {
                             <button 
                               className="action-btn" 
                               onClick={() => {
-                                // Extract a relevant topic query from the message text
-                                const cleaned = msg.text.replace(/```[\s\S]*?```/g, '').substring(0, 100);
-                                setVideoSearchQuery(companion.topic + " " + cleaned);
+                                setActiveVideoMessage({ 
+                                  text: msg.text, 
+                                  topic: currentModule?.title || companion.topic 
+                                });
                                 setShowVideoModal(true);
                               }}
-                              title="Watch Video Explanation"
+                              title="Generate AI Video Presentation"
                             >
                               <Youtube size={14} />
                             </button>
@@ -1732,11 +1733,13 @@ const CompanionSession = () => {
         }}
       />
       
-      {/* Video Overlay Fallback */}
+      {/* Real-time AI Presentation Studio */}
       <VideoModal
         isOpen={showVideoModal}
         onClose={() => setShowVideoModal(false)}
-        query={videoSearchQuery}
+        text={activeVideoMessage.text}
+        topic={activeVideoMessage.topic}
+        companionName={companion.name}
       />
       
       <Toast toasts={toasts} />

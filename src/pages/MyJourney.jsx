@@ -9,7 +9,7 @@ import './MyJourney.css';
 
 const MyJourney = () => {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, userData } = useAuth();
   
   const [stats, setStats] = useState({
     totalSessions: 0,
@@ -49,8 +49,7 @@ const MyJourney = () => {
         ...prev, 
         totalSessions: snapshot.size,
         totalMinutes: Math.floor(totalTime / 60),
-        // Simplistic streak logic placeholder until backend cron exists
-        currentStreak: snapshot.size > 0 ? (snapshot.size > 5 ? 7 : snapshot.size) : 0
+        currentStreak: userData?.streakCount || 0
       }));
       setLoading(false);
     });
@@ -59,7 +58,7 @@ const MyJourney = () => {
       unsubscribeCompanions();
       unsubscribeSessions();
     };
-  }, [currentUser]);
+  }, [currentUser, userData?.streakCount]);
 
   // Framer Motion Variants
   const containerVariants = {
