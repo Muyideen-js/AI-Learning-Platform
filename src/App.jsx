@@ -72,10 +72,6 @@ function AppContent() {
               </PrivateRoute>
             }
           />
-                <Subscription />
-              </PrivateRoute>
-            }
-          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
