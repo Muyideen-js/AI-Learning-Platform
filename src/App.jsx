@@ -11,6 +11,7 @@ import CompanionSession from './pages/CompanionSession';
 import MyJourney from './pages/MyJourney';
 import Subscription from './pages/Subscription';
 import NotFound from './pages/NotFound';
+import Profile from './pages/Profile';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
@@ -59,6 +60,18 @@ function AppContent() {
             path="/subscription"
             element={
               <PrivateRoute>
+                <Subscription />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            }
+          />
                 <Subscription />
               </PrivateRoute>
             }

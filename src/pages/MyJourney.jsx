@@ -123,8 +123,13 @@ const MyJourney = () => {
             </button>
           </div>
           <div className="streak-badge">
-            <Flame size={18} strokeWidth={1.5} className="streak-icon" />
-            <span>{stats.currentStreak} Day Streak</span>
+            <div className="amazing-fire streak-icon" style={{ transform: 'scale(0.7)', transformOrigin: 'center left', marginRight: '-8px' }}>
+              <div className="flame-main"></div>
+              <div className="flame-middle"></div>
+              <div className="flame-inner"></div>
+              <div className="flame-bottom"></div>
+            </div>
+            <span style={{ position: 'relative', zIndex: 1 }}>{stats.currentStreak} Day Streak</span>
           </div>
         </motion.header>
 

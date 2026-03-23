@@ -107,6 +107,10 @@ const Navbar = () => {
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.2 }}
                     >
+                      <Link to="/profile" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
+                        <User size={14} />
+                        <span>Profile</span>
+                      </Link>
                       <button onClick={handleLogout} className="dropdown-item">
                         <LogOut size={14} />
                         <span>Logout</span>

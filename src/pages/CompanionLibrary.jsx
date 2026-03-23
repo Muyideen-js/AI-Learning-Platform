@@ -6,7 +6,6 @@ import CompanionCard from '../components/CompanionCard';
 import CustomSelect from '../components/CustomSelect';
 import { Search, Filter, ArrowLeft, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import Loader from '../components/Loader';
 import './CompanionLibrary.css';
 
 const SUBJECTS = [
@@ -115,7 +114,7 @@ const CompanionLibrary = () => {
         </div>
 
         {loading ? (
-          <Loader text="Loading companions..." size={150} />
+          <div className="loading">Loading companions...</div>
         ) : (
           <>
             {/* My Companions Section */}
