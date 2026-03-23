@@ -1,12 +1,23 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Sparkles, Library, Flame } from 'lucide-react';
+import { Sparkles, Library } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useRive } from '@rive-app/react-canvas';
 import CompanionCard from '../components/CompanionCard';
 import HomeRobot from '../components/HomeRobot';
+import Loader from '../components/Loader';
+import streakRive from '../assets/anim/streak.riv';
 import './Home.css';
+
+const StreakFire = () => {
+  const { RiveComponent } = useRive({
+    src: streakRive,
+    autoplay: true,
+  });
+  return <RiveComponent style={{ width: '40px', height: '40px', marginRight: '4px' }} />;
+};
 
 const Home = () => {
   const { currentUser, userData } = useAuth();
@@ -71,12 +82,7 @@ const Home = () => {
       <div className="home-hero" style={{ position: 'relative' }}>
         {currentUser && (
           <div style={{ position: 'absolute', top: '24px', right: '32px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffaa00', fontWeight: '800', fontSize: '24px', zIndex: 10, textShadow: '0 0 10px rgba(255,170,0,0.5)' }}>
-            <div className="amazing-fire">
-              <div className="flame-main"></div>
-              <div className="flame-middle"></div>
-              <div className="flame-inner"></div>
-              <div className="flame-bottom"></div>
-            </div>
+            <StreakFire />
             <span>{userData?.streakCount || 0}</span>
           </div>
         )}
@@ -98,7 +104,7 @@ const Home = () => {
             Popular Companions
           </h2>
           {loading ? (
-            <div className="loading">Loading...</div>
+            <Loader text="Loading..." size={150} />
           ) : popularCompanions.length > 0 ? (
             <div className="grid grid-3">
               {popularCompanions.map(companion => (

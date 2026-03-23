@@ -10,6 +10,7 @@ import VoiceModal from '../components/VoiceModal';
 import QuizModal from '../components/QuizModal';
 import VideoModal from '../components/VideoModal';
 import Toast from '../components/Toast';
+import Loader from '../components/Loader';
 import { useToast } from '../hooks/useToast';
 import useVapi from '../hooks/useVapi';
 import ReactMarkdown from 'react-markdown';
@@ -1184,7 +1185,7 @@ const CompanionSession = () => {
   if (loading) {
     return (
       <div className="session-page">
-        <div className="loading">Loading companion...</div>
+        <Loader text="Loading companion..." size={150} />
       </div>
     );
   }
@@ -1493,7 +1494,9 @@ const CompanionSession = () => {
                     <div style={{ padding: '16px' }}>
                       <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--text-primary)', textAlign: 'center' }}>Top Students</h3>
                       {loadingLeaderboard ? (
-                        <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>Fetching ranks...</div>
+                        <div style={{ transform: 'scale(0.8)', padding: '20px' }}>
+                          <Loader text="Fetching ranks..." size={80} />
+                        </div>
                       ) : leaderboardData.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {leaderboardData.map((user, index) => (
