@@ -23,7 +23,23 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
 
     const vapiRef = useRef(null);
     const isStartingRef = useRef(false); // Start lock — prevents double start
+    const startTimeoutRef = useRef(null);
     const callbacksRef = useRef({ onError, onCallStart, onCallEnd });
+
+    const parseVapiError = useCallback((err) => {
+        if (!err) return 'Voice connection error. Please try again.';
+        if (typeof err === 'string') return err;
+        if (err?.error?.message) return err.error.message;
+        if (err?.error?.msg) return String(err.error.msg);
+        if (err?.message) return err.message;
+        if (err?.reason) return String(err.reason);
+        if (err?.type) return `VAPI ${err.type}`;
+        try {
+            return JSON.stringify(err);
+        } catch (_e) {
+            return 'Voice connection error. Please try again.';
+        }
+    }, []);
 
     useEffect(() => {
         callbacksRef.current = { onError, onCallStart, onCallEnd };
@@ -43,6 +59,10 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
             const vapi = vapiRef.current;
 
             vapi.on('call-start', () => {
+                if (startTimeoutRef.current) {
+                    clearTimeout(startTimeoutRef.current);
+                    startTimeoutRef.current = null;
+                }
                 isStartingRef.current = false;
                 setIsCallActive(true);
                 setIsConnecting(false);
@@ -60,13 +80,24 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
             // your Vapi Dashboard Voice configuration.
             // ----------------------------------------------------------------------
 
-            vapi.on('call-end', () => {
+            vapi.on('call-end', (evt) => {
+                if (startTimeoutRef.current) {
+                    clearTimeout(startTimeoutRef.current);
+                    startTimeoutRef.current = null;
+                }
+                const endedEarly = isStartingRef.current && !isCallActive;
                 isStartingRef.current = false;
                 setIsCallActive(false);
                 setIsConnecting(false);
                 setIsSpeaking(false);
                 setIsMuted(false);
                 setVolumeLevel(0);
+                if (endedEarly) {
+                    const reason = parseVapiError(evt);
+                    const msg = `Voice call ended immediately. ${reason}. Check VAPI assistant settings (silence timeout/end-call rules), API key, and assistant ID.`;
+                    setError(msg);
+                    callbacksRef.current.onError?.(msg);
+                }
                 callbacksRef.current.onCallEnd?.();
             });
 
@@ -90,18 +121,13 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
             vapi.on('error', (err) => {
                 console.error('VAPI Error:', err);
                 isStartingRef.current = false;
-
-                let errorMsg = 'Voice connection error. Please try again.';
-                if (typeof err === 'string') {
-                    errorMsg = err;
-                } else if (err?.type === 'start-method-error') {
-                    errorMsg = 'Could not connect to voice service. Check your VAPI dashboard settings.';
-                } else if (err?.error?.message) {
-                    errorMsg = err.error.message;
-                } else if (err?.message) {
-                    errorMsg = err.message;
-                } else if (err?.error?.msg) {
-                    errorMsg = String(err.error.msg);
+                if (startTimeoutRef.current) {
+                    clearTimeout(startTimeoutRef.current);
+                    startTimeoutRef.current = null;
+                }
+                let errorMsg = parseVapiError(err);
+                if (err?.type === 'start-method-error') {
+                    errorMsg = `Could not connect to voice service. ${errorMsg}`;
                 }
                 setError(errorMsg);
                 setIsCallActive(false);
@@ -161,18 +187,28 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
             // without locking the hardware enumerateDevices thread. Combined, the native
             // ID should now connect properly.
             await vapi.start(assistantId);
+            startTimeoutRef.current = setTimeout(() => {
+                if (!isCallActive) {
+                    isStartingRef.current = false;
+                    setIsConnecting(false);
+                    const timeoutMsg = 'Voice call did not connect in time. Check microphone permission, VAPI assistant status, and network.';
+                    setError(timeoutMsg);
+                    callbacksRef.current.onError?.(timeoutMsg);
+                }
+            }, 15000);
         } catch (err) {
             console.error('Failed to start VAPI call:', err);
             isStartingRef.current = false;
-            let errorMsg = 'Failed to start voice call. Please try again.';
-            if (typeof err === 'string') errorMsg = err;
-            else if (err?.error?.message) errorMsg = err.error.message;
-            else if (err?.message) errorMsg = err.message;
+            if (startTimeoutRef.current) {
+                clearTimeout(startTimeoutRef.current);
+                startTimeoutRef.current = null;
+            }
+            const errorMsg = `Failed to start voice call. ${parseVapiError(err)}`;
             setError(errorMsg);
             setIsConnecting(false);
             callbacksRef.current.onError?.(errorMsg);
         }
-    }, [getVapi, isCallActive]);
+    }, [getVapi, isCallActive, parseVapiError]);
 
     const stopCall = useCallback(() => {
         try {
@@ -180,6 +216,10 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
             if (vapi) vapi.stop();
         } catch (err) {
             console.error('Error stopping VAPI call:', err);
+        }
+        if (startTimeoutRef.current) {
+            clearTimeout(startTimeoutRef.current);
+            startTimeoutRef.current = null;
         }
         isStartingRef.current = false;
         setIsCallActive(false);
@@ -209,6 +249,10 @@ const useVapi = ({ onError, onCallStart, onCallEnd } = {}) => {
             if (vapiRef.current) {
                 try { vapiRef.current.stop(); } catch (e) { /* ignore */ }
                 vapiRef.current = null;
+            }
+            if (startTimeoutRef.current) {
+                clearTimeout(startTimeoutRef.current);
+                startTimeoutRef.current = null;
             }
             isStartingRef.current = false;
         };
