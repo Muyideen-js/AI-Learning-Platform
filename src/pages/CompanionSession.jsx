@@ -1433,25 +1433,33 @@ const CompanionSession = () => {
             {companion.curriculum && companion.curriculum.length > 0 ? (
               <div className="curriculum-presession">
                 <h3 className="curriculum-presession-title">Course Modules</h3>
-                <div style={{ marginBottom: '14px', padding: '12px', border: '1px solid var(--border-light)', borderRadius: '10px', background: 'var(--bg-secondary)', textAlign: 'left' }}>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>Learning Dashboard</div>
-                  <div style={{ fontSize: '13px', marginBottom: '4px' }}>
-                    ✅ Modules completed: <strong>{learnerInsights.modulesCompleted}</strong> · 💬 Interactions: <strong>{learnerInsights.interactions}</strong>
+                <div className="learning-dashboard-card">
+                  <div className="learning-dashboard-title">Learning Dashboard</div>
+                  <div className="learning-dashboard-metrics">
+                    <div className="metric-chip">
+                      <span className="metric-chip-label">Modules</span>
+                      <strong>{learnerInsights.modulesCompleted}</strong>
+                    </div>
+                    <div className="metric-chip">
+                      <span className="metric-chip-label">Interactions</span>
+                      <strong>{learnerInsights.interactions}</strong>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: learnerInsights.nextStep ? '6px' : '0' }}>
-                    Weak topics: {learnerInsights.weakTopics.length ? learnerInsights.weakTopics.join(', ') : 'none identified yet'}
+                  <div className="learning-dashboard-weak">
+                    <span>Weak topics</span>
+                    <strong>{learnerInsights.weakTopics.length ? learnerInsights.weakTopics.join(', ') : 'None identified yet'}</strong>
                   </div>
                   {learnerInsights.nextStep && (
-                    <div style={{ fontSize: '12px' }}>
-                      👉 Next recommended step: {learnerInsights.nextStep}
+                    <div className="learning-dashboard-next">
+                      Next: {learnerInsights.nextStep}
                     </div>
                   )}
                 </div>
                 {resumeModuleId && (
-                  <div style={{ marginBottom: '16px', padding: '12px', border: '1px solid var(--border-light)', borderRadius: '10px', background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Continue where you stopped</div>
-                      <div style={{ fontSize: '13px', fontWeight: 600 }}>Module {resumeModuleId}</div>
+                  <div className="resume-module-card">
+                    <div className="resume-module-copy">
+                      <div className="resume-module-label">Continue where you stopped</div>
+                      <div className="resume-module-title">Module {resumeModuleId}</div>
                     </div>
                     <button
                       className="module-start-btn"

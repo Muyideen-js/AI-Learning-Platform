@@ -1,192 +1,194 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { X, PlayCircle, PauseCircle, StopCircle, RefreshCcw } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Download, RefreshCcw, Video, X } from 'lucide-react';
 import './VideoModal.css';
 
-const parseContent = (text) => {
-  if (!text) return [];
-  const blocks = [];
-  const regex = /```(\w*)\n([\s\S]*?)```/g;
-  let lastIndex = 0;
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      blocks.push({ type: 'text', content: text.substring(lastIndex, match.index) });
-    }
-    blocks.push({ type: 'code', language: match[1], content: match[2] });
-    lastIndex = regex.lastIndex;
-  }
-  if (lastIndex < text.length) {
-    blocks.push({ type: 'text', content: text.substring(lastIndex) });
-  }
-  return blocks;
+const extractCode = (value = '') => {
+  const match = value.match(/```[\w]*\n([\s\S]*?)```/);
+  return match?.[1]?.trim() || '';
 };
 
-// Split text block into sentences for TTS
-const getSentences = (text) => {
-  const cleanText = text
-    .replace(/\*\*/g, '')
-    .replace(/#/g, '')
-    .replace(/\*/g, '')
-    .replace(/`/g, '');
-  return (cleanText.match(/[^.!?\n]+[.!?\n]+/g) || [cleanText]).map(s => s.trim()).filter(s => s.length > 0);
+const extractNarration = (value = '') => {
+  const noCode = value.replace(/```[\s\S]*?```/g, '');
+  return noCode
+    .replace(/[#>*`_-]/g, '')
+    .replace(/\n+/g, ' ')
+    .trim();
 };
 
 const VideoModal = ({ isOpen, onClose, topic, text, companionName }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [blocks, setBlocks] = useState([]);
-  const [visibleContent, setVisibleContent] = useState('');
-  const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
-  const [currentCodeTyping, setCurrentCodeTyping] = useState('');
-  const [activeCodeBlock, setActiveCodeBlock] = useState(null);
-  
-  const synthRef = useRef(window.speechSynthesis);
-  const utteranceRef = useRef(null);
-  const typingIntervalRef = useRef(null);
-  
-  useEffect(() => {
-    if (text) {
-      setBlocks(parseContent(text));
-    }
-  }, [text]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [error, setError] = useState('');
+  const [previewCode, setPreviewCode] = useState('');
+  const [previewLine, setPreviewLine] = useState('');
+  const rafRef = useRef(null);
+  const recorderRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen) {
-      stopPresentation();
-    } else if (isOpen && blocks.length > 0 && !isPlaying && currentBlockIndex === 0 && !visibleContent) {
-      startPresentation();
+      if (videoUrl) URL.revokeObjectURL(videoUrl);
+      setVideoUrl('');
+      setProgress(0);
+      setPreviewCode('');
+      setPreviewLine('');
+      setError('');
     }
-    return () => stopPresentation();
-  }, [isOpen, blocks]);
-
-  const startPresentation = () => {
-    stopPresentation();
-    setIsPlaying(true);
-    playBlock(0, '');
-  };
-
-  const playBlock = (index, accumulatedContent) => {
-    if (index >= blocks.length) {
-      setIsPlaying(false);
-      setCurrentBlockIndex(index);
-      return;
-    }
-    
-    setIsPlaying(true);
-    setCurrentBlockIndex(index);
-    const block = blocks[index];
-    
-    if (block.type === 'text') {
-      setActiveCodeBlock(null);
-      const sentences = getSentences(block.content);
-      playTextSentences(sentences, 0, accumulatedContent, index);
-    } else if (block.type === 'code') {
-      setActiveCodeBlock(block);
-      playCodeTyping(block, accumulatedContent, index);
-    }
-  };
-
-  const playTextSentences = (sentences, sIndex, accumulatedContent, bIndex) => {
-    if (sIndex >= sentences.length) {
-      // Calculate how many slashes to add, or just take the original block and format it
-      const commentBlock = blocks[bIndex].content
-        .split('\n')
-        .map(l => l.trim() ? `// ${l.trim()}` : '')
-        .join('\n');
-      
-      const newAcc = accumulatedContent + commentBlock + '\n\n';
-      setVisibleContent(newAcc);
-      playBlock(bIndex + 1, newAcc);
-      return;
-    }
-
-    const sentence = sentences[sIndex];
-    
-    // Type the sentence as a comment
-    const newAcc = accumulatedContent + '// ' + sentence + '\n';
-    setVisibleContent(newAcc);
-
-    const utterance = new SpeechSynthesisUtterance(sentence);
-    utterance.rate = 1.05;
-    utterance.pitch = 1.1;
-    
-    const voices = synthRef.current.getVoices();
-    const preferredVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Female')) || voices[0];
-    if (preferredVoice) utterance.voice = preferredVoice;
-
-    utterance.onend = () => {
-      playTextSentences(sentences, sIndex + 1, accumulatedContent, bIndex);
+    return () => {
+      if (videoUrl) URL.revokeObjectURL(videoUrl);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-    
-    utterance.onerror = () => {
-      // Skip on error
-      playTextSentences(sentences, sIndex + 1, accumulatedContent, bIndex);
-    };
+  }, [isOpen]);
 
-    utteranceRef.current = utterance;
-    synthRef.current.speak(utterance);
-  };
+  const codeText = useMemo(() => {
+    const parsed = extractCode(text || '');
+    if (parsed) return parsed;
+    return `// ${topic || 'Lesson'}\nfunction explainConcept() {\n  return "Practice with examples and short exercises.";\n}\n\nconsole.log(explainConcept());`;
+  }, [text, topic]);
 
-  const playCodeTyping = (block, accumulatedContent, bIndex) => {
-    let typed = '';
-    let charIndex = 0;
-    
-    // Announce code
-    const utterance = new SpeechSynthesisUtterance("Writing code example...");
-    utterance.rate = 1.1;
-    synthRef.current.speak(utterance);
-    
-    clearInterval(typingIntervalRef.current);
-    typingIntervalRef.current = setInterval(() => {
-      if (charIndex < block.content.length) {
-        // Typing chunk
-        typed += block.content.substring(charIndex, charIndex + 3);
-        charIndex += 3;
-        setCurrentCodeTyping(typed);
+  const narration = useMemo(() => {
+    const parsed = extractNarration(text || '');
+    return parsed || `In this lesson, ${companionName || 'your tutor'} explains ${topic || 'the concept'} while writing code live.`;
+  }, [text, topic, companionName]);
+
+  const drawWrappedText = (ctx, textValue, x, y, maxWidth, lineHeight, maxLines = 4) => {
+    const words = textValue.split(' ');
+    let line = '';
+    let lineCount = 0;
+    for (let i = 0; i < words.length; i += 1) {
+      const test = `${line}${words[i]} `;
+      const width = ctx.measureText(test).width;
+      if (width > maxWidth && line) {
+        ctx.fillText(line.trim(), x, y + lineCount * lineHeight);
+        line = `${words[i]} `;
+        lineCount += 1;
+        if (lineCount >= maxLines) break;
       } else {
-        clearInterval(typingIntervalRef.current);
-        const newAcc = accumulatedContent + `\n\`\`\`${block.language}\n${block.content}\n\`\`\`\n\n`;
-        setVisibleContent(newAcc);
-        setCurrentCodeTyping('');
-        setActiveCodeBlock(null);
-        setTimeout(() => playBlock(bIndex + 1, newAcc), 1000);
+        line = test;
       }
-    }, 30);
+    }
+    if (lineCount < maxLines) ctx.fillText(line.trim(), x, y + lineCount * lineHeight);
   };
 
-  const stopPresentation = () => {
-    synthRef.current.cancel();
-    clearInterval(typingIntervalRef.current);
-    setIsPlaying(false);
-    setCurrentBlockIndex(0);
-    setVisibleContent('');
-    setCurrentCodeTyping('');
-    setActiveCodeBlock(null);
+  const generateVideo = async () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+    setError('');
+    setProgress(0);
+    setVideoUrl('');
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1280;
+      canvas.height = 720;
+      const ctx = canvas.getContext('2d');
+      const stream = canvas.captureStream(30);
+      const chunks = [];
+
+      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (e) => {
+        if (e.data?.size) chunks.push(e.data);
+      };
+
+      const durationMs = Math.min(70000, Math.max(18000, codeText.length * 25));
+      const start = performance.now();
+      const teacherName = companionName || 'AI Tutor';
+
+      const drawFrame = (now) => {
+        const elapsed = now - start;
+        const pct = Math.min(1, elapsed / durationMs);
+        const typedLen = Math.floor(codeText.length * pct);
+        const typedCode = codeText.slice(0, typedLen);
+        const currentSentence = narration.slice(0, Math.floor(narration.length * pct));
+
+        setProgress(Math.round(pct * 100));
+        setPreviewCode(typedCode);
+        const sentenceParts = currentSentence.split(/[.!?]/).filter(Boolean);
+        setPreviewLine(sentenceParts[sentenceParts.length - 1] || '');
+
+        ctx.fillStyle = '#0c0f16';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#151a23';
+        ctx.fillRect(0, 0, canvas.width, 78);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '600 26px Inter, sans-serif';
+        ctx.fillText(`Real Lesson Video • ${topic || 'AI Tutorial'}`, 36, 50);
+
+        ctx.fillStyle = '#121721';
+        ctx.fillRect(36, 102, 400, 560);
+        ctx.fillStyle = '#2f81f7';
+        ctx.beginPath();
+        ctx.arc(236, 238, 84, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = '700 46px Inter, sans-serif';
+        ctx.fillText('TEACHER', 132, 252);
+        ctx.font = '600 30px Inter, sans-serif';
+        ctx.fillText(teacherName.slice(0, 16), 96, 348);
+        ctx.font = '400 22px Inter, sans-serif';
+        ctx.fillStyle = '#b8c0d6';
+        drawWrappedText(ctx, currentSentence || narration, 64, 410, 340, 34, 7);
+
+        ctx.fillStyle = '#0b0f15';
+        ctx.fillRect(464, 102, 780, 560);
+        ctx.fillStyle = '#1f2937';
+        ctx.fillRect(464, 102, 780, 44);
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '500 18px monospace';
+        ctx.fillText('lesson.ts', 494, 130);
+
+        ctx.fillStyle = '#d1d5db';
+        ctx.font = '22px Consolas, monospace';
+        const lines = typedCode.split('\n');
+        lines.forEach((line, idx) => {
+          ctx.fillStyle = '#64748b';
+          ctx.fillText(String(idx + 1), 492, 182 + idx * 28);
+          ctx.fillStyle = '#e5e7eb';
+          ctx.fillText(line || ' ', 548, 182 + idx * 28);
+        });
+
+        if (pct < 1) {
+          rafRef.current = requestAnimationFrame(drawFrame);
+        } else {
+          recorder.stop();
+        }
+      };
+
+      recorder.start(200);
+      rafRef.current = requestAnimationFrame(drawFrame);
+
+      const url = await new Promise((resolve, reject) => {
+        recorder.onerror = reject;
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          resolve(URL.createObjectURL(blob));
+        };
+      });
+      setVideoUrl(url);
+    } catch (e) {
+      console.error(e);
+      setError('Could not generate video in this browser. Try Chrome/Edge.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const pausePresentation = () => {
-    if (synthRef.current.speaking) {
-      synthRef.current.pause();
-    }
-    clearInterval(typingIntervalRef.current);
-    setIsPlaying(false);
+  const resetVideo = () => {
+    if (videoUrl) URL.revokeObjectURL(videoUrl);
+    setVideoUrl('');
+    setProgress(0);
+    setPreviewCode('');
+    setPreviewLine('');
+    setError('');
   };
 
-  const resumePresentation = () => {
-    if (currentBlockIndex >= blocks.length) {
-      startPresentation();
-      return;
+  const stopGeneration = () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+      recorderRef.current.stop();
     }
-    if (synthRef.current.paused) {
-      synthRef.current.resume();
-      setIsPlaying(true);
-    } else if (activeCodeBlock) {
-      // Resume typing
-      setIsPlaying(true);
-      playCodeTyping({ ...activeCodeBlock, content: activeCodeBlock.content.substring(currentCodeTyping.length) }, visibleContent, currentBlockIndex);
-    } else {
-      startPresentation();
-    }
+    setIsGenerating(false);
   };
 
   if (!isOpen) return null;
@@ -196,109 +198,67 @@ const VideoModal = ({ isOpen, onClose, topic, text, companionName }) => {
       <div className="video-modal-content ai-presentation-mode">
         <div className="video-modal-header">
           <div className="video-header-left">
-            <div className={`ai-recording-indicator ${isPlaying ? 'active' : ''}`}></div>
-            <h3>AI Code Tutorial Video</h3>
+            <div className={`ai-recording-indicator ${isGenerating ? 'active' : ''}`}></div>
+            <h3>Real Lesson Video Generator</h3>
           </div>
           <button className="btn-close-video" onClick={onClose} title="Close Video">
             <X size={20} />
           </button>
         </div>
-        
-        <div className="video-modal-body presentation-body layout-split">
-          
-          <div className="presentation-stage split-left">
-            {/* The Avatar Visuals */}
-            <h2 className="presentation-topic">{topic}</h2>
-            <div className={`ai-avatar-container ${isPlaying && !activeCodeBlock ? 'speaking' : ''}`}>
-              <div className="avatar-rings">
-                <div className="ring ring-1"></div>
-                <div className="ring ring-2"></div>
-                <div className="ring ring-3"></div>
-              </div>
-              <div className="ai-avatar-core">
-                🤖
-              </div>
-              <div className="ai-name-badge">{companionName || 'AI Tutor'}</div>
-            </div>
 
+        <div className="video-modal-body presentation-body layout-split">
+          <div className="presentation-stage split-left">
+            <h2 className="presentation-topic">{topic || 'AI Lesson'}</h2>
+            <p className="caption-text">Generate a real `.webm` lesson video with a teacher scene and live code typing timeline.</p>
             <div className="presentation-controls">
-              {isPlaying ? (
-                <button className="ctrl-btn" onClick={pausePresentation}><PauseCircle size={24} /> Pause</button>
-              ) : (
-                <button className="ctrl-btn play" onClick={resumePresentation}><PlayCircle size={28} /> Play</button>
+              <button className="ctrl-btn play" onClick={generateVideo} disabled={isGenerating}>
+                <Video size={20} />
+                {isGenerating ? 'Generating...' : 'Generate Real Video'}
+              </button>
+              <button className="ctrl-btn" onClick={resetVideo} disabled={isGenerating}>
+                <RefreshCcw size={16} /> Reset
+              </button>
+              <button className="ctrl-btn" onClick={stopGeneration} disabled={!isGenerating}>
+                Stop
+              </button>
+              {videoUrl && (
+                <a className="ctrl-btn" href={videoUrl} download={`lesson-${Date.now()}.webm`}>
+                  <Download size={16} /> Download
+                </a>
               )}
-              <button className="ctrl-btn" onClick={stopPresentation}><StopCircle size={20} /> Stop</button>
-              <button className="ctrl-btn" onClick={startPresentation}><RefreshCcw size={18} /> Restart</button>
             </div>
+            {isGenerating && (
+              <div className="video-progress-wrap">
+                <div className="video-progress-bar">
+                  <div className="video-progress-fill" style={{ width: `${progress}%` }} />
+                </div>
+                <span>{progress}%</span>
+              </div>
+            )}
+            {error && <div className="video-error">{error}</div>}
           </div>
-          
+
           <div className="presentation-screen split-right vscode-theme">
-             <div className="vscode-window">
-               <div className="vscode-titlebar">
-                 <div className="mac-buttons">
-                   <span className="mac-btn close"></span>
-                   <span className="mac-btn min"></span>
-                   <span className="mac-btn max"></span>
-                 </div>
-                 <div className="vscode-title">lesson-workspace - Visual Studio Code</div>
-               </div>
-               
-               <div className="vscode-main">
-                 <div className="vscode-activity-bar">
-                   <div className="activity-icon active">📄</div>
-                   <div className="activity-icon">🔍</div>
-                   <div className="activity-icon">⚡</div>
-                   <div className="activity-icon">⚙️</div>
-                 </div>
-                 <div className="vscode-sidebar">
-                   <div className="sidebar-title">EXPLORER</div>
-                   <div className="explorer-section">
-                     <div className="explorer-header">▼ LEARNING-MODULE</div>
-                     <div className="explorer-item active">
-                       <span className="file-icon">📄</span> tutorial.js
-                     </div>
-                     <div className="explorer-item">
-                       <span className="file-icon"></span> index.html
-                     </div>
-                     <div className="explorer-item">
-                       <span className="file-icon"></span> style.css
-                     </div>
-                   </div>
-                 </div>
-                 <div className="vscode-editor">
-                   <div className="vscode-tabs">
-                     <div className="vscode-tab active">
-                        <span className="file-icon">📄</span> tutorial.js
-                        <span className="tab-close">×</span>
-                     </div>
-                   </div>
-                   
-                   <div className="vscode-editor-content">
-                     <div className="vscode-line-numbers">
-                       {Array.from({ length: Math.max(20, (visibleContent + currentCodeTyping).split('\n').length + 5) }).map((_, i) => (
-                         <div key={i} className="line-num">{i + 1}</div>
-                       ))}
-                     </div>
-                     <div className="vscode-code-area">
-                       {visibleContent || currentCodeTyping ? (
-                         <pre><code>
-                           <span className="code-comments">{visibleContent}</span>
-                           {activeCodeBlock && (
-                             <span className="live-typing">
-                               {currentCodeTyping}<span className="cursor-blink">|</span>
-                             </span>
-                           )}
-                         </code></pre>
-                       ) : (
-                         <div className="paused-text" style={{ paddingLeft: '8px' }}>
-                           {isPlaying ? '// Initializing tutorial workspace...' : '// Press Play to begin the lesson.'}
-                         </div>
-                       )}
-                     </div>
-                   </div>
-                 </div>
-               </div>
-             </div>
+            {videoUrl ? (
+              <video className="real-video-player" src={videoUrl} controls autoPlay />
+            ) : (
+              <div className="vscode-window">
+                <div className="vscode-titlebar">
+                  <div className="vscode-title">lesson.ts - Preview</div>
+                </div>
+                <div className="vscode-editor-content">
+                  <div className="vscode-line-numbers">
+                    {Array.from({ length: Math.max(18, previewCode.split('\n').length + 2) }).map((_, i) => (
+                      <div key={i} className="line-num">{i + 1}</div>
+                    ))}
+                  </div>
+                  <div className="vscode-code-area">
+                    <pre><code>{previewCode || '// Click "Generate Real Video" to start rendering...'}</code></pre>
+                    {previewLine && <div className="live-caption">{previewLine}</div>}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

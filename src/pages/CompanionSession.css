@@ -1509,6 +1509,89 @@
     color: var(--text-secondary);
 }
 
+.learning-dashboard-card {
+    margin-bottom: 14px;
+    padding: 14px;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005));
+    text-align: left;
+}
+
+.learning-dashboard-title {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.learning-dashboard-metrics {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.metric-chip {
+    flex: 1;
+    border: 1px solid var(--border-light);
+    background: var(--bg-primary);
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+}
+
+.metric-chip-label {
+    color: var(--text-secondary);
+    font-size: 11px;
+}
+
+.learning-dashboard-weak {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.learning-dashboard-next {
+    font-size: 12px;
+    color: var(--text-primary);
+    border-top: 1px dashed var(--border-light);
+    padding-top: 8px;
+}
+
+.resume-module-card {
+    margin-bottom: 16px;
+    padding: 12px;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.resume-module-copy {
+    text-align: left;
+}
+
+.resume-module-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.resume-module-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
 .module-cards-list {
     display: flex;
     flex-direction: column;
