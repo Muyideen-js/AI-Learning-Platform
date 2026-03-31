@@ -4,7 +4,7 @@ import { updateProfile } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
-import { Camera, Save, User, Mail, Shield, Zap, Key } from 'lucide-react';
+import { Camera, Save, User, Mail, Shield, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './Profile.css';
 
@@ -134,11 +134,7 @@ const Profile = () => {
 
             <div className="sidebar-stats">
               <div className="stat-row">
-                <span className="stat-label"><Zap size={14} /> Streak</span>
-                <span className="stat-val">{userData?.streakCount || 0} Days</span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label"><Key size={14} /> Joined</span>
+                <span className="stat-label"><Calendar size={14} /> Joined</span>
                 <span className="stat-val">
                   {userData?.createdAt ? new Date(userData.createdAt?.toDate ? userData.createdAt.toDate() : userData.createdAt).toLocaleDateString() : 'Recently'}
                 </span>

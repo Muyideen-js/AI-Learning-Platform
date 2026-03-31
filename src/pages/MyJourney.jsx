@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { ArrowLeft, Home, Zap, Award, Layers, Hourglass, Target, Flame, Cpu, Timer, Star, Trophy, Sparkles, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Home, Award, Layers, Hourglass, Target, Cpu, Trophy, Sparkles, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import './MyJourney.css';
@@ -15,7 +15,6 @@ const MyJourney = () => {
     totalSessions: 0,
     totalMinutes: 0,
     companionsCreated: 0,
-    currentStreak: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -49,7 +48,6 @@ const MyJourney = () => {
         ...prev, 
         totalSessions: snapshot.size,
         totalMinutes: Math.floor(totalTime / 60),
-        currentStreak: userData?.streakCount || 0
       }));
       setLoading(false);
     });
@@ -58,7 +56,7 @@ const MyJourney = () => {
       unsubscribeCompanions();
       unsubscribeSessions();
     };
-  }, [currentUser, userData?.streakCount]);
+  }, [currentUser]);
 
   // Framer Motion Variants
   const containerVariants = {
@@ -76,10 +74,9 @@ const MyJourney = () => {
 
   const achievements = [
     { id: 'first-steps', icon: Target, name: 'First Steps', desc: 'Complete your first session', requirement: 1, current: stats.totalSessions },
-    { id: 'on-fire', icon: Flame, name: 'On Fire', desc: 'Complete 10 sessions', requirement: 10, current: stats.totalSessions },
+    { id: 'on-fire', icon: Trophy, name: 'On Fire', desc: 'Complete 10 sessions', requirement: 10, current: stats.totalSessions },
     { id: 'ai-master', icon: Cpu, name: 'AI Master', desc: 'Create 3 companions', requirement: 3, current: stats.companionsCreated },
     { id: 'time-traveler', icon: Hourglass, name: 'Time Traveler', desc: 'Learn for 60 minutes', requirement: 60, current: stats.totalMinutes },
-    { id: 'dedicated', icon: Star, name: 'Dedicated', desc: '7-day learning streak', requirement: 7, current: stats.currentStreak },
     { id: 'champion', icon: Trophy, name: 'Champion', desc: 'Complete 50 sessions', requirement: 50, current: stats.totalSessions },
   ];
 
@@ -123,13 +120,7 @@ const MyJourney = () => {
             </button>
           </div>
           <div className="streak-badge">
-            <div className="amazing-fire streak-icon" style={{ transform: 'scale(0.7)', transformOrigin: 'center left', marginRight: '-8px' }}>
-              <div className="flame-main"></div>
-              <div className="flame-middle"></div>
-              <div className="flame-inner"></div>
-              <div className="flame-bottom"></div>
-            </div>
-            <span style={{ position: 'relative', zIndex: 1 }}>{stats.currentStreak} Day Streak</span>
+            <span style={{ position: 'relative', zIndex: 1 }}>{stats.totalSessions} Sessions Completed</span>
           </div>
         </motion.header>
 
@@ -185,11 +176,11 @@ const MyJourney = () => {
 
           <motion.div className="metric-card glass-panel" variants={itemVariants} whileHover={{ y: -5, scale: 1.02 }}>
             <div className="metric-icon-box">
-              <Zap size={28} strokeWidth={1.25} />
+              <Award size={28} strokeWidth={1.25} />
             </div>
             <div className="metric-info">
-              <span className="metric-value">{stats.currentStreak}</span>
-              <span className="metric-label">Streak Record</span>
+              <span className="metric-value">{achievements.filter((a) => a.current >= a.requirement).length}</span>
+              <span className="metric-label">Badges Unlocked</span>
             </div>
           </motion.div>
         </motion.div>
@@ -258,7 +249,7 @@ const MyJourney = () => {
         >
           <div className="cta-content">
             <h3>Ready for your next breakthrough?</h3>
-            <p>Don't break your streak! Jump right back into the learning library.</p>
+            <p>Jump right back into the learning library and keep improving.</p>
           </div>
           <button onClick={() => navigate('/library')} className="btn-glow">
             <span>Browse Library</span>
