@@ -1,10 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
-import { Camera, Save, User, Mail, Shield, Calendar } from 'lucide-react';
+import { Camera, Save, User, Mail, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './Profile.css';
 
@@ -12,12 +12,22 @@ const Profile = () => {
   const { currentUser, userData } = useAuth();
   const navigate = useNavigate();
   
-  const [displayName, setDisplayName] = useState(currentUser?.displayName || userData?.name || '');
-  const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [displayName, setDisplayName] = useState(currentUser?.displayName || userData?.name || '');
   const fileInputRef = useRef(null);
+
+  const joinedLabel = useMemo(() => {
+    const createdAt = userData?.createdAt;
+    if (!createdAt) return 'Recently';
+    const dateObj = createdAt?.toDate ? createdAt.toDate() : createdAt;
+    if (!dateObj) return 'Recently';
+    return new Date(dateObj).toLocaleDateString();
+  }, [userData?.createdAt]);
+
+  const roleLabel = userData?.role === 'admin' ? 'Administrator' : 'Student';
+  const isDirty = displayName.trim() !== (currentUser?.displayName || userData?.name || '').trim();
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
@@ -56,10 +66,7 @@ const Profile = () => {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    if (!displayName.trim()) {
-      setError('Display name cannot be empty');
-      return;
-    }
+    if (!displayName.trim()) return setError('Name cannot be empty');
 
     try {
       setLoading(true);
@@ -73,7 +80,6 @@ const Profile = () => {
         name: displayName,
       });
 
-      setIsEditing(false);
       setSuccessMessage('Profile updated successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
@@ -89,18 +95,15 @@ const Profile = () => {
   return (
     <div className="profile-page">
       <div className="profile-container">
-        
         <div className="profile-header">
-          <h1>My Profile</h1>
-          <p>Manage your account settings and personal information</p>
+          <h1 className="profile-title">Profile</h1>
+          <div className="profile-subtitle">{roleLabel}</div>
         </div>
 
         {error && <div className="profile-alert error">{error}</div>}
         {successMessage && <div className="profile-alert success">{successMessage}</div>}
 
         <div className="profile-content">
-          
-          {/* Avatar Section */}
           <div className="profile-sidebar glass-panel">
             <div className="avatar-wrapper">
               <div className="avatar-circle">
@@ -127,79 +130,50 @@ const Profile = () => {
             </div>
             
             <h2 className="sidebar-name">{displayName}</h2>
-            <div className="sidebar-badge">
-              <Shield size={14} /> 
-              <span>{userData?.role === 'admin' ? 'Administrator' : 'Student'}</span>
-            </div>
-
-            <div className="sidebar-stats">
-              <div className="stat-row">
-                <span className="stat-label"><Calendar size={14} /> Joined</span>
-                <span className="stat-val">
-                  {userData?.createdAt ? new Date(userData.createdAt?.toDate ? userData.createdAt.toDate() : userData.createdAt).toLocaleDateString() : 'Recently'}
-                </span>
-              </div>
+            <div className="sidebar-badge">{roleLabel}</div>
+            <div className="sidebar-joined">
+              <Calendar size={14} />
+              <span>Joined {joinedLabel}</span>
             </div>
             
             <button className="btn-outline-action" onClick={() => navigate('/my-journey')}>
-              View Learning Journey
+              Learning Journey
             </button>
           </div>
 
-          {/* Details Section */}
           <div className="profile-details glass-panel">
-            <div className="details-header">
-              <h3>Personal Information</h3>
-              {!isEditing && (
-                <button className="btn-text-action" onClick={() => setIsEditing(true)}>
-                  Edit Profile
-                </button>
-              )}
-            </div>
-
             <form className="profile-form" onSubmit={handleSaveProfile}>
               <div className="form-group">
-                <label><User size={16} /> Display Name</label>
-                <input 
-                  type="text" 
-                  value={displayName} 
-                  onChange={(e) => setDisplayName(e.target.value)} 
-                  disabled={!isEditing || loading}
+                <label><User size={16} /> Name</label>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  disabled={loading}
                   className="profile-input"
                 />
               </div>
 
               <div className="form-group">
-                <label><Mail size={16} /> Email Address</label>
-                <input 
-                  type="email" 
-                  value={currentUser.email} 
-                  disabled 
+                <label><Mail size={16} /> Email</label>
+                <input
+                  type="email"
+                  value={currentUser.email || ''}
+                  disabled
                   className="profile-input disabled"
                 />
-                <span className="input-hint">Email address cannot be changed directly.</span>
               </div>
-              
-              {isEditing && (
-                <div className="form-actions">
-                  <button type="button" className="btn-cancel" onClick={() => { setIsEditing(false); setDisplayName(currentUser.displayName || userData?.name); }} disabled={loading}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn-save" disabled={loading}>
-                    {loading ? 'Saving...' : <><Save size={16} /> Save Changes</>}
-                  </button>
-                </div>
-              )}
-            </form>
 
-            <div className="account-danger-zone">
-              <h3>Danger Zone</h3>
-              <p>Once you delete your account, there is no going back. Please be certain.</p>
-              <button className="btn-danger" onClick={() => alert('Account deletion currently disabled in demo mode.')}>
-                Delete Account
-              </button>
-            </div>
-            
+              <div className="form-actions">
+                <button
+                  type="submit"
+                  className="btn-save"
+                  disabled={loading || !isDirty}
+                >
+                  {loading ? 'Saving...' : <><Save size={16} /> Save</>}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
