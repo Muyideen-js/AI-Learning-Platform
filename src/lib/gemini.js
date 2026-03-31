@@ -1,3 +1,30 @@
+import {
+    buildRelevantMemoryContext,
+    getUserLearningMemory,
+    updateLearningMemoryAfterTurn,
+} from './memory';
+import { buildLearningAgentDirectives } from './learningAgent';
+import { decideAndRunAgentTools } from './agentTools';
+import {
+    buildReasoningContext,
+    getReasoningState,
+    updateReasoningStateAfterTurn,
+} from './reasoningState';
+import {
+    buildDeveloperPrompt,
+    buildSystemPrompt,
+    buildUserPromptParts,
+    composeHiddenInstruction,
+} from './promptArchitecture';
+import {
+    buildCacheKey,
+    getCachedResponse,
+    getGenerationBudget,
+    selectModelFromAvailable,
+    setCachedResponse,
+    trimConversationForBudget,
+} from './aiOptimization';
+
 let cachedModelName = null;
 
 export const generateAIResponse = async (
@@ -6,7 +33,8 @@ export const generateAIResponse = async (
     conversationHistory = [],
     onStreamChunk = null,
     currentModule = null,
-    fileData = null
+    fileData = null,
+    memoryMeta = {}
 ) => {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -43,13 +71,7 @@ export const generateAIResponse = async (
 
             console.log("Available generation models:", generateModels.map(m => m.name));
 
-            const preferredModel = generateModels.find(m => m.name.includes("gemini-2.5-flash")) ||
-                generateModels.find(m => m.name.includes("gemini-2.0-flash")) ||
-                generateModels.find(m => m.name.includes("gemini-1.5-flash")) ||
-                generateModels.find(m => m.name.includes("gemini-1.5-pro")) ||
-                generateModels[0];
-
-            cachedModelName = preferredModel.name.replace("models/", "");
+            cachedModelName = selectModelFromAvailable(generateModels, { userMessage, fileData });
             console.log(`Selected model: ${cachedModelName} `);
         }
 
@@ -59,46 +81,85 @@ export const generateAIResponse = async (
 
         console.log(`Generating with ${model}...`);
 
-        const systemPromptText = `You are ${companion.name}, a ${companion.style === "formal"
-            ? "professional and knowledgeable"
-            : "friendly and approachable"
-            } ${companion.subject} tutor who teaches ${companion.topic}.
-${currentModule ? `
-Current Focus: Module ${currentModule.id} - ${currentModule.title}
-${currentModule.description}
-Focus your teaching on this specific module topic.
-` : ''
+        const userMemory = await getUserLearningMemory(memoryMeta.userId, companion?.id || memoryMeta.companionId);
+        const reasoningState = await getReasoningState(memoryMeta.userId, companion?.id || memoryMeta.companionId);
+        const memoryContext = buildRelevantMemoryContext(userMemory, {
+            userMessage,
+            currentModule,
+        });
+        const reasoningContext = buildReasoningContext(reasoningState, currentModule);
+        const learningAgentDirectives = buildLearningAgentDirectives({
+            userMessage,
+            companion,
+            memory: userMemory,
+            currentModule,
+            conversationHistory,
+        });
+        const { toolCalls, toolContext } = decideAndRunAgentTools({
+            userMessage,
+            currentModule,
+            memory: userMemory,
+            fileData,
+            conversationHistory,
+        });
+
+        const systemPrompt = buildSystemPrompt({
+            companion,
+            currentModule,
+            hasHistory: conversationHistory.length > 0,
+        });
+        const developerPrompt = buildDeveloperPrompt({
+            memoryContext,
+            learningAgentDirectives,
+            toolCalls,
+            toolContext,
+            reasoningContext,
+        });
+        const systemPromptText = composeHiddenInstruction({
+            systemPrompt,
+            developerPrompt,
+        });
+        const userParts = buildUserPromptParts({ userMessage, fileData });
+        const budget = getGenerationBudget({ userMessage, conversationHistory });
+        const trimmedHistory = trimConversationForBudget(conversationHistory, budget.historyTurns);
+        const cacheKey = buildCacheKey({
+            userId: memoryMeta.userId,
+            companionId: companion?.id || memoryMeta.companionId,
+            moduleId: currentModule?.id || '',
+            userMessage,
+        });
+        const diagnostics = {
+            model,
+            budget,
+            toolCalls,
+            hasMemoryContext: Boolean(memoryContext),
+            hasReasoningContext: Boolean(reasoningContext),
+            cacheKey,
+        };
+        if (typeof memoryMeta?.onDiagnostics === 'function') {
+            try {
+                memoryMeta.onDiagnostics(diagnostics);
+            } catch (diagErr) {
+                console.warn('Diagnostics callback failed:', diagErr);
             }
-Speak naturally like a real human tutor.
-Be warm, engaging, and conversational.
-Avoid robotic or repetitive phrases.
-Keep responses concise — max 3-4 short paragraphs.
+        }
 
-TEACHING METHOD:
-1. EXPLAIN STEP-BY-STEP: Break down complex topics into small, digestible parts. Do NOT dump a wall of text.
-2. PROACTIVE TASKS: You MUST proactively weave mini coding challenges or exercises into your teaching every 2-3 responses WITHOUT the user asking. For example, after explaining a concept, immediately say: "Now try this: write a [specific task] in your Code Sandbox and click 'Check My Code' when done!" This is critical — do NOT wait for them to ask.
-3. WAIT FOR CONFIRMATION: Do not proceed to the next step until the user responds or submits their task.
-4. ASSESSMENT LOCK: If you have given a task and the user hasn't completed it correctly, DO NOT let them change the topic. Kindly insist they finish the task first.
-5. PROGRESSIVE DIFFICULTY: Start simple and gradually increase complexity. Each task should build on the previous one.
-6. DIAGRAMS: When explaining architectures or flows, use mermaid code blocks to visualize them. Wrap diagrams in \`\`\`mermaid ... \`\`\` syntax.
-
-If this is the VERY FIRST message of the session (conversation history is empty), immediately start teaching with a brief warm welcome and your first lesson point. Do NOT gate behind a 'Start' command — jump straight into the first concept and assign a quick micro-task right away.`;
-
-        let userParts = [{ text: userMessage || 'Analyze this file' }];
-        
-        if (fileData) {
-            if (fileData.type === 'image') {
-                // Gemini Vision: pass base64 directly
-                userParts.unshift({
-                    inlineData: {
-                        data: fileData.base64,
-                        mimeType: fileData.mimeType
-                    }
-                });
-            } else if (fileData.type === 'text') {
-                // Text files: inject raw text directly into the prompt
-                userParts[0].text = `[Attached File: ${fileData.name}]\n\nFile Content:\n\`\`\`\n${fileData.content}\n\`\`\`\n\nUser Question:\n${userMessage || 'Please analyze this file.'}`;
+        const cached = getCachedResponse(cacheKey);
+        if (cached) {
+            if (typeof memoryMeta?.onDiagnostics === 'function') {
+                try {
+                    memoryMeta.onDiagnostics({ ...diagnostics, cacheHit: true });
+                } catch (diagErr) {
+                    console.warn('Diagnostics callback failed:', diagErr);
+                }
             }
+            if (onStreamChunk) {
+                for (const word of cached.split(" ")) {
+                    onStreamChunk(word + " ");
+                    await new Promise(r => setTimeout(r, 10));
+                }
+            }
+            return cached;
         }
 
         const requestBody = {
@@ -107,7 +168,7 @@ If this is the VERY FIRST message of the session (conversation history is empty)
                 parts: [{ text: systemPromptText }],
             },
             contents: [
-                ...conversationHistory.slice(-10).map(msg => {
+                ...trimmedHistory.map(msg => {
                     // Safely extract string content from history just in case object was saved
                     const safeContent = typeof msg.content === 'string' ? msg.content : (msg.content?.text || JSON.stringify(msg.content));
                     return {
@@ -118,8 +179,8 @@ If this is the VERY FIRST message of the session (conversation history is empty)
                 { role: "user", parts: userParts },
             ],
             generationConfig: {
-                temperature: companion.style === "formal" ? 0.85 : 0.9,
-                maxOutputTokens: 800,
+                temperature: companion.style === "formal" ? Math.min(0.8, budget.temperature) : budget.temperature,
+                maxOutputTokens: budget.maxOutputTokens,
             },
         };
 
@@ -172,6 +233,23 @@ If this is the VERY FIRST message of the session (conversation history is empty)
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
         if (!text) throw new Error("Empty Gemini response");
+        setCachedResponse(cacheKey, text);
+
+        await updateLearningMemoryAfterTurn({
+            userId: memoryMeta.userId,
+            companionId: companion?.id || memoryMeta.companionId,
+            companion,
+            userMessage,
+            assistantMessage: text,
+            currentModule,
+        });
+        await updateReasoningStateAfterTurn({
+            userId: memoryMeta.userId,
+            companionId: companion?.id || memoryMeta.companionId,
+            currentModule,
+            userMessage,
+            assistantMessage: text,
+        });
 
         // Simulated streaming
         if (onStreamChunk) {
@@ -472,13 +550,22 @@ DO NOT write a long essay. Keep the review incredibly concise.`;
  * @param {string} conversationTranscript - The raw string representation of the session
  * @returns {Promise<Array>} - Array of 3 Question Objects
  */
-export const generateDynamicQuiz = async (moduleTitle, moduleDescription, conversationTranscript) => {
+export const generateDynamicQuiz = async (
+    moduleTitle,
+    moduleDescription,
+    conversationTranscript,
+    adaptiveContext = {}
+) => {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!apiKey) throw new Error("API key is missing");
 
     try {
+        const level = adaptiveContext?.difficultyLevel || 'intermediate';
+        const weakTopics = Array.isArray(adaptiveContext?.weakTopics) ? adaptiveContext.weakTopics.slice(0, 3) : [];
         const prompt = `You are a strict JSON generator.
 Generate a 3-question Multiple Choice Quiz based EXACTLY on this user's conversation transcript about: ${moduleTitle} (${moduleDescription}).
+Difficulty level: ${level}.
+Weak topics to target (if relevant): ${weakTopics.length ? weakTopics.join(', ') : 'none'}.
 
 Transcript of what the user learned:
 ${conversationTranscript || 'No transcript available. Generate a generic quiz about the topic.'}
@@ -489,9 +576,16 @@ Each object must have the exact structure:
   {
     "question": "The question text",
     "options": ["Option A", "Option B", "Option C", "Option D"],
-    "correctAnswer": 0 // The integer index of the correct option (0-3)
+    "correctAnswer": 0, // The integer index of the correct option (0-3)
+    "explanation": "One-line explanation"
   }
-]`;
+]
+
+Rules:
+- exactly 3 questions
+- exactly 4 options each
+- keep language concise
+- ensure one clear correct answer per question`;
 
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
@@ -511,7 +605,14 @@ Each object must have the exact structure:
         let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
         // Clean markdown
         rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        return JSON.parse(rawText);
+        const parsed = JSON.parse(rawText);
+        if (!Array.isArray(parsed) || parsed.length === 0) return null;
+        return parsed.slice(0, 3).map((q) => ({
+            question: q.question,
+            options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
+            correctAnswer: Number.isInteger(q.correctAnswer) ? q.correctAnswer : 0,
+            explanation: q.explanation || '',
+        }));
     } catch (e) {
         console.error("Quiz generation parsings failed:", e);
         return null;

@@ -4,6 +4,9 @@ import { doc, getDoc, collection, addDoc, updateDoc, setDoc, increment, query, w
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateAIResponse as getAIResponse } from '../lib/gemini';
+import { getUserLearningMemory, updateLearningMemoryAfterTurn } from '../lib/memory';
+import { getReasoningState } from '../lib/reasoningState';
+import { generateDynamicQuiz } from '../lib/gemini';
 import { ArrowLeft, Mic, Crown, Volume2, Send, Paperclip, Copy, RotateCcw, Pause, StopCircle, ArrowDown, X, FileText, Image as ImageIcon, Star, ChevronDown, Zap, Youtube } from 'lucide-react';
 import ChatRobot from '../components/ChatRobot';
 import VoiceModal from '../components/VoiceModal';
@@ -85,12 +88,21 @@ const CompanionSession = () => {
   const [moduleMessageCount, setModuleMessageCount] = useState(0);
   const [curriculumVisible, setCurriculumVisible] = useState(false);
   const [moduleSessions, setModuleSessions] = useState({}); // Track which modules have sessions
+  const [resumeModuleId, setResumeModuleId] = useState(null);
+  const [learnerInsights, setLearnerInsights] = useState({
+    modulesCompleted: 0,
+    interactions: 0,
+    weakTopics: [],
+    nextStep: ''
+  });
   const [cumulativeModuleStats, setCumulativeModuleStats] = useState({}); // Store cumulative stats per module
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [unlockedModuleId, setUnlockedModuleId] = useState(null);
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [quizModuleId, setQuizModuleId] = useState(null);
   const [quizScores, setQuizScores] = useState({});
+  const [dynamicQuizByModule, setDynamicQuizByModule] = useState({});
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [activeVideoMessage, setActiveVideoMessage] = useState({ text: '', topic: '' });
@@ -105,6 +117,12 @@ const CompanionSession = () => {
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [sessionXP, setSessionXP] = useState(0);
   const [expandedModules, setExpandedModules] = useState({});
+  const [aiDiagnostics, setAiDiagnostics] = useState(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const isAdminUser = userData?.role === 'admin' || currentUser?.email?.endsWith('@admin.com');
+  const handleAIDiagnostics = useCallback((data) => {
+    setAiDiagnostics(data);
+  }, []);
 
   // Page Tour Onboarding (Driver.js)
   useEffect(() => {
@@ -264,19 +282,30 @@ const CompanionSession = () => {
         
         const querySnapshot = await getDocs(q);
         const sessions = {};
+        let latestModuleId = null;
+        let latestAccessMs = 0;
         
         querySnapshot.forEach(doc => {
           const data = doc.data();
           if (data.moduleId) {
+            const accessMs = data.lastAccessedAt?.toDate?.()?.getTime?.() || 0;
             sessions[data.moduleId] = {
               hasSession: true,
               messageCount: data.transcript?.length || 0,
-              lastAccessed: data.lastAccessedAt
+              lastAccessed: data.lastAccessedAt,
+              lastAccessedMs: accessMs
             };
+            if (accessMs >= latestAccessMs) {
+              latestAccessMs = accessMs;
+              latestModuleId = data.moduleId;
+            }
           }
         });
         
         setModuleSessions(sessions);
+        if (latestModuleId) {
+          setResumeModuleId(latestModuleId);
+        }
       } catch (error) {
         console.error('Error loading module sessions:', error);
       }
@@ -300,6 +329,35 @@ const CompanionSession = () => {
       }
     };
     fetchUserXP();
+  }, [currentUser, id]);
+
+  // Load learner memory + reasoning insights for dashboard
+  useEffect(() => {
+    const loadLearnerInsights = async () => {
+      if (!currentUser || !id) return;
+      try {
+        const [memory, reasoning] = await Promise.all([
+          getUserLearningMemory(currentUser.uid, id),
+          getReasoningState(currentUser.uid, id),
+        ]);
+
+        const weakTopics = Object.entries(memory?.weakTopics || {})
+          .sort((a, b) => (b[1]?.confusionCount || 0) - (a[1]?.confusionCount || 0))
+          .slice(0, 3)
+          .map(([topic]) => topic);
+
+        setLearnerInsights({
+          modulesCompleted: memory?.progress?.modulesCompleted || 0,
+          interactions: memory?.progress?.totalInteractions || 0,
+          weakTopics,
+          nextStep: reasoning?.nextStep || ''
+        });
+      } catch (err) {
+        console.error('Error loading learner insights:', err);
+      }
+    };
+
+    loadLearnerInsights();
   }, [currentUser, id]);
 
   // Load Leaderboard when tab is active
@@ -374,7 +432,8 @@ const CompanionSession = () => {
               updateMessage(msgId, fullResponse);
             },
             currentModule,
-            lastMsg.file || null
+            lastMsg.file || null,
+            { userId: currentUser?.uid, companionId: id, onDiagnostics: handleAIDiagnostics }
           );
 
           if (fullResponse !== aiResponse) {
@@ -536,15 +595,18 @@ const CompanionSession = () => {
   };
 
 
-  const startSession = async () => {
+  const startSession = async (targetModuleId = currentModuleId) => {
     try {
+      if (targetModuleId !== currentModuleId) {
+        setCurrentModuleId(targetModuleId);
+      }
       // Check if a session already exists for this companion + module
       const sessionsRef = collection(db, 'sessions');
       const q = query(
         sessionsRef,
         where('userId', '==', currentUser.uid),
         where('companionId', '==', id),
-        where('moduleId', '==', currentModuleId)
+        where('moduleId', '==', targetModuleId)
       );
       
       const querySnapshot = await getDocs(q);
@@ -584,7 +646,7 @@ const CompanionSession = () => {
           userId: currentUser.uid,
           companionId: id,
           companionName: companion.name,
-          moduleId: currentModuleId,
+          moduleId: targetModuleId,
           startedAt: new Date(),
           transcript: [initialMessage],
           timeSpent: 0,
@@ -717,7 +779,46 @@ const CompanionSession = () => {
   };
   
   // Open quiz for a module
-  const openQuizForModule = (moduleId) => {
+  const openQuizForModule = async (moduleId) => {
+    const module = companion?.curriculum?.find(m => m.id === moduleId);
+    if (!module) return;
+
+    setIsGeneratingQuiz(true);
+    try {
+      const memory = currentUser ? await getUserLearningMemory(currentUser.uid, id) : null;
+      const weakTopics = Object.entries(memory?.weakTopics || {})
+        .sort((a, b) => (b[1]?.confusionCount || 0) - (a[1]?.confusionCount || 0))
+        .slice(0, 3)
+        .map(([topic]) => topic);
+      const difficultyLevel =
+        (memory?.progress?.modulesCompleted || 0) >= 4 ? 'advanced' :
+        (memory?.progress?.modulesCompleted || 0) >= 1 ? 'intermediate' :
+        'beginner';
+
+      const transcriptText = transcript
+        .slice(-14)
+        .map(m => `${m.sender === 'user' ? 'Student' : 'Tutor'}: ${m.text}`)
+        .join('\n');
+
+      const generated = await generateDynamicQuiz(
+        module.title,
+        module.description,
+        transcriptText,
+        { weakTopics, difficultyLevel }
+      );
+
+      if (generated && generated.length > 0) {
+        setDynamicQuizByModule(prev => ({ ...prev, [moduleId]: generated }));
+      } else {
+        showToast('Using module quiz (adaptive quiz unavailable right now).');
+      }
+    } catch (error) {
+      console.error('Error generating adaptive quiz:', error);
+      showToast('Could not generate adaptive quiz, using default quiz.');
+    } finally {
+      setIsGeneratingQuiz(false);
+    }
+
     setQuizModuleId(moduleId);
     setShowQuizModal(true);
   };
@@ -773,12 +874,32 @@ const CompanionSession = () => {
     }
 
     showToast(`🎉 Module ${quizModuleId} complete! Score: ${score}%`);
+
+    await updateLearningMemoryAfterTurn({
+      userId: currentUser?.uid,
+      companionId: id,
+      companion,
+      userMessage: `Passed quiz for module ${quizModuleId}`,
+      assistantMessage: `Quiz passed with score ${score}%`,
+      currentModule: companion?.curriculum?.find(m => m.id === quizModuleId) || null,
+      quizEvent: { type: 'pass', score }
+    });
   };
 
   // Handle quiz fail
-  const handleQuizFail = (score) => {
+  const handleQuizFail = async (score) => {
     setQuizScores(prev => ({ ...prev, [quizModuleId]: score }));
     showToast(`Score: ${score}%. You need 70% to unlock the next module.`);
+
+    await updateLearningMemoryAfterTurn({
+      userId: currentUser?.uid,
+      companionId: id,
+      companion,
+      userMessage: `Failed quiz for module ${quizModuleId}`,
+      assistantMessage: `Quiz failed with score ${score}%`,
+      currentModule: companion?.curriculum?.find(m => m.id === quizModuleId) || null,
+      quizEvent: { type: 'fail', score }
+    });
   };
 
     const endSession = async () => {
@@ -973,7 +1094,8 @@ const CompanionSession = () => {
           updateMessage(messageId, fullResponse);
         },
         currentModule,
-        fileToSend
+        fileToSend,
+        { userId: currentUser?.uid, companionId: id, onDiagnostics: handleAIDiagnostics }
       );
       
       // Ensure final message is set
@@ -1164,7 +1286,9 @@ const CompanionSession = () => {
               fullResponse += chunk;
               updateMessage(messageId, fullResponse);
             },
-            currentModule
+            currentModule,
+            null,
+            { userId: currentUser?.uid, companionId: id, onDiagnostics: handleAIDiagnostics }
           );
           
           if (fullResponse !== aiResponse) {
@@ -1228,8 +1352,25 @@ const CompanionSession = () => {
             <div className="session-timer">
               {Math.floor(sessionDuration / 60)}:{(sessionDuration % 60).toString().padStart(2, '0')}
             </div>
+            {isAdminUser && (
+              <button
+                className="btn-header-action"
+                onClick={() => setShowDiagnostics(prev => !prev)}
+                title="Toggle AI diagnostics"
+              >
+                Telemetry
+              </button>
+            )}
             
             <div className="header-actions-divider"></div>
+            {isAdminUser && showDiagnostics && aiDiagnostics && (
+              <div style={{ padding: '8px 10px', border: '1px solid var(--border-light)', borderRadius: '8px', background: 'var(--bg-secondary)', fontSize: '11px', lineHeight: 1.4, maxWidth: '360px' }}>
+                <div><strong>Model:</strong> {aiDiagnostics.model}</div>
+                <div><strong>Cache:</strong> {aiDiagnostics.cacheHit ? 'hit' : 'miss'}</div>
+                <div><strong>Tools:</strong> {(aiDiagnostics.toolCalls || []).join(', ') || 'none'}</div>
+                <div><strong>Tokens:</strong> {aiDiagnostics.budget?.maxOutputTokens || 'n/a'}</div>
+              </div>
+            )}
 
             {/* TTS Controls - Show when speaking */}
             {isSpeaking && (
@@ -1292,6 +1433,34 @@ const CompanionSession = () => {
             {companion.curriculum && companion.curriculum.length > 0 ? (
               <div className="curriculum-presession">
                 <h3 className="curriculum-presession-title">Course Modules</h3>
+                <div style={{ marginBottom: '14px', padding: '12px', border: '1px solid var(--border-light)', borderRadius: '10px', background: 'var(--bg-secondary)', textAlign: 'left' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>Learning Dashboard</div>
+                  <div style={{ fontSize: '13px', marginBottom: '4px' }}>
+                    ✅ Modules completed: <strong>{learnerInsights.modulesCompleted}</strong> · 💬 Interactions: <strong>{learnerInsights.interactions}</strong>
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: learnerInsights.nextStep ? '6px' : '0' }}>
+                    Weak topics: {learnerInsights.weakTopics.length ? learnerInsights.weakTopics.join(', ') : 'none identified yet'}
+                  </div>
+                  {learnerInsights.nextStep && (
+                    <div style={{ fontSize: '12px' }}>
+                      👉 Next recommended step: {learnerInsights.nextStep}
+                    </div>
+                  )}
+                </div>
+                {resumeModuleId && (
+                  <div style={{ marginBottom: '16px', padding: '12px', border: '1px solid var(--border-light)', borderRadius: '10px', background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Continue where you stopped</div>
+                      <div style={{ fontSize: '13px', fontWeight: 600 }}>Module {resumeModuleId}</div>
+                    </div>
+                    <button
+                      className="module-start-btn"
+                      onClick={() => startSession(resumeModuleId)}
+                    >
+                      Continue
+                    </button>
+                  </div>
+                )}
                 <div className="module-cards-list">
                   {companion.curriculum.map((module, idx) => {
                     const unlocked = isModuleUnlocked(module.id);
@@ -1325,11 +1494,10 @@ const CompanionSession = () => {
                                 className="module-start-btn"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setCurrentModuleId(module.id);
-                                  startSession();
+                                  startSession(module.id);
                                 }}
                               >
-                                Start
+                                {moduleSessions[module.id]?.hasSession ? 'Continue' : 'Start'}
                               </button>
                             )}
                             {completed && <span className="module-done-badge">Done</span>}
@@ -1349,8 +1517,7 @@ const CompanionSession = () => {
                                   className={`subtopic-item ${subUnlocked ? 'sub-unlocked' : 'sub-locked'}`}
                                   onClick={() => {
                                     if (subUnlocked && unlocked) {
-                                      setCurrentModuleId(module.id);
-                                      startSession();
+                                      startSession(module.id);
                                     }
                                   }}
                                 >
@@ -1478,8 +1645,13 @@ const CompanionSession = () => {
                             })}
                           </div>
                           {moduleTimeSpent >= 60 && moduleMessageCount >= 10 && !isModuleCompleted(currentModuleId) && (
-                            <button onClick={() => openQuizForModule(currentModuleId)} className="btn-complete-module" style={{ margin: '16px' }}>
-                              📝 Take Quiz — Module {currentModuleId}
+                            <button
+                              onClick={() => openQuizForModule(currentModuleId)}
+                              className="btn-complete-module"
+                              style={{ margin: '16px' }}
+                              disabled={isGeneratingQuiz}
+                            >
+                              {isGeneratingQuiz ? 'Generating adaptive quiz...' : `📝 Take Quiz — Module ${currentModuleId}`}
                             </button>
                           )}
                         </>
@@ -1733,7 +1905,19 @@ const CompanionSession = () => {
       {/* Quiz Modal — module completion gate */}
       <QuizModal
         isOpen={showQuizModal}
-        module={companion?.curriculum?.find(m => m.id === quizModuleId)}
+        module={(() => {
+          const base = companion?.curriculum?.find(m => m.id === quizModuleId);
+          if (!base) return base;
+          const adaptiveQuestions = dynamicQuizByModule[quizModuleId];
+          if (!adaptiveQuestions?.length) return base;
+          return {
+            ...base,
+            quiz: {
+              ...(base.quiz || {}),
+              questions: adaptiveQuestions
+            }
+          };
+        })()}
         onClose={() => setShowQuizModal(false)}
         onPass={handleQuizPass}
         onFail={handleQuizFail}
