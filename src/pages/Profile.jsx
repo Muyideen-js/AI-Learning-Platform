@@ -4,7 +4,7 @@ import { updateProfile } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
-import { Camera, Save, User, Mail, Calendar } from 'lucide-react';
+import { BarChart3, Calendar, Camera, CreditCard, Library, Mail, PlusSquare, Save, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './Profile.css';
 
@@ -28,6 +28,12 @@ const Profile = () => {
 
   const roleLabel = userData?.role === 'admin' ? 'Administrator' : 'Student';
   const isDirty = displayName.trim() !== (currentUser?.displayName || userData?.name || '').trim();
+  const accountStats = [
+    { label: 'Role', value: roleLabel },
+    { label: 'Joined', value: joinedLabel },
+    { label: 'Sessions', value: String(userData?.totalSessions || 0) },
+    { label: 'XP', value: String(userData?.xp || 0) },
+  ];
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
@@ -174,6 +180,40 @@ const Profile = () => {
                 </button>
               </div>
             </form>
+
+            <div className="profile-block">
+              <div className="block-title"><BarChart3 size={14} /> Account</div>
+              <div className="stats-grid">
+                {accountStats.map((item) => (
+                  <div key={item.label} className="stat-tile">
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="profile-block">
+              <div className="block-title"><CreditCard size={14} /> Quick</div>
+              <div className="quick-grid">
+                <button className="quick-btn" onClick={() => navigate('/my-journey')}>
+                  <BarChart3 size={14} />
+                  Journey
+                </button>
+                <button className="quick-btn" onClick={() => navigate('/library')}>
+                  <Library size={14} />
+                  Library
+                </button>
+                <button className="quick-btn" onClick={() => navigate('/create-companion')}>
+                  <PlusSquare size={14} />
+                  Create
+                </button>
+                <button className="quick-btn" onClick={() => navigate('/subscription')}>
+                  <CreditCard size={14} />
+                  Plan
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
