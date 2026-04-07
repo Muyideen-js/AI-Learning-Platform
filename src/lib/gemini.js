@@ -5,6 +5,7 @@ const callTutorResponse = httpsCallable(functions, 'generateTutorResponse');
 const callAdaptiveQuiz = httpsCallable(functions, 'generateAdaptiveQuiz');
 const callCodeReview = httpsCallable(functions, 'evaluateCodeSubmission');
 const callCurriculum = httpsCallable(functions, 'generateCompanionCurriculum');
+const callTutorDiagnostics = httpsCallable(functions, 'getTutorDiagnostics');
 
 export const generateAIResponse = async (
   userMessage,
@@ -102,7 +103,8 @@ export const generateDynamicQuiz = async (
   moduleTitle,
   moduleDescription,
   conversationTranscript,
-  adaptiveContext = {}
+  adaptiveContext = {},
+  companionId = null
 ) => {
   try {
     const result = await callAdaptiveQuiz({
@@ -110,6 +112,7 @@ export const generateDynamicQuiz = async (
       moduleDescription,
       conversationTranscript,
       adaptiveContext,
+      companionId,
     });
 
     const questions = result?.data?.questions;
@@ -125,6 +128,16 @@ export const generateDynamicQuiz = async (
     }));
   } catch (error) {
     console.error('Quiz generation failed:', error);
+    return null;
+  }
+};
+
+export const getTutorDiagnostics = async () => {
+  try {
+    const result = await callTutorDiagnostics({});
+    return result?.data?.diagnostics || null;
+  } catch (error) {
+    console.error('Diagnostics fetch failed:', error);
     return null;
   }
 };

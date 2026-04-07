@@ -1,7 +1,9 @@
 import { initializeApp } from 'firebase-admin/app';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 initializeApp();
+const db = getFirestore();
 
 const rateLimitMap = new Map();
 const diagnosticsByUser = new Map();
@@ -9,6 +11,8 @@ const diagnosticsByUser = new Map();
 const REGION = 'us-central1';
 const GEMINI_VERSION = 'v1beta';
 const DEFAULT_MODEL = 'gemini-2.0-flash';
+const MISSION_COLLECTION = 'learningMissionState';
+const CONFUSION_MARKERS = ['confused', "don't understand", 'not clear', 'hard', 'difficult', 'stuck'];
 
 function requireAuth(request) {
   if (!request.auth?.uid) {
@@ -76,6 +80,55 @@ async function callGeminiGenerateContent({ model = DEFAULT_MODEL, systemInstruct
   return text;
 }
 
+function missionDocId(uid, companionId) {
+  return `${uid}__${companionId || 'default'}`;
+}
+
+async function getMissionState(uid, companionId) {
+  const ref = db.collection(MISSION_COLLECTION).doc(missionDocId(uid, companionId));
+  const snap = await ref.get();
+  if (!snap.exists) {
+    return {
+      completedModules: 0,
+      interactions: 0,
+      difficultyLevel: 'beginner',
+      nextStep: 'Ask what topic the learner wants to master first.',
+      weakTopics: [],
+    };
+  }
+  return { ...snap.data() };
+}
+
+async function updateMissionState(uid, companionId, update) {
+  const ref = db.collection(MISSION_COLLECTION).doc(missionDocId(uid, companionId));
+  await ref.set(
+    {
+      ...update,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+function detectConfusionSignal(input = '') {
+  const text = String(input || '').toLowerCase();
+  return CONFUSION_MARKERS.some((marker) => text.includes(marker));
+}
+
+function chooseDifficulty({ priorDifficulty = 'beginner', interactions = 0, confusionCount = 0 }) {
+  if (confusionCount >= 3) return 'beginner';
+  if (interactions >= 20 && confusionCount <= 1) return 'advanced';
+  if (interactions >= 8) return 'intermediate';
+  return priorDifficulty || 'beginner';
+}
+
+function ensureTutorFollowUp(text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.includes('?')) return trimmed;
+  return `${trimmed}\n\nQuick check: does this part make sense, or should I simplify it further?`;
+}
+
 export const generateTutorResponse = onCall({ region: REGION, timeoutSeconds: 60 }, async (request) => {
   const uid = requireAuth(request);
   checkRateLimit(uid, 40, 60_000);
@@ -86,7 +139,18 @@ export const generateTutorResponse = onCall({ region: REGION, timeoutSeconds: 60
     conversationHistory = [],
     currentModule = null,
     fileData = null,
+    memoryMeta = {},
   } = request.data || {};
+  const companionId = memoryMeta?.companionId || companion?.id || 'default';
+  const missionState = await getMissionState(uid, companionId);
+  const confusionSignal = detectConfusionSignal(userMessage);
+  const nextInteractionCount = Number(missionState.interactions || 0) + 1;
+  const nextConfusionCount = Number(missionState.confusionCount || 0) + (confusionSignal ? 1 : 0);
+  const difficultyLevel = chooseDifficulty({
+    priorDifficulty: missionState.difficultyLevel,
+    interactions: nextInteractionCount,
+    confusionCount: nextConfusionCount,
+  });
 
   const tone = companion?.style === 'formal' ? 'formal' : 'friendly';
   const historyText = (Array.isArray(conversationHistory) ? conversationHistory : [])
@@ -103,6 +167,10 @@ export const generateTutorResponse = onCall({ region: REGION, timeoutSeconds: 60
     `Use ${tone} teaching style.`,
     'Follow plan -> think -> act internally and return only final helpful answer.',
     'Ask one follow-up question when useful.',
+    `Current learner level: ${missionState.difficultyLevel || 'beginner'}.`,
+    `Known weak topics: ${(missionState.weakTopics || []).slice(0, 4).join(', ') || 'none yet'}.`,
+    `Suggested next step: ${missionState.nextStep || 'guide learner through current module'}.`,
+    confusionSignal ? 'The learner sounds confused; simplify explanations and verify understanding.' : '',
   ].join(' ');
 
   const prompt = [
@@ -113,13 +181,14 @@ export const generateTutorResponse = onCall({ region: REGION, timeoutSeconds: 60
     fileHint,
   ].filter(Boolean).join('\n\n');
 
-  const text = await callGeminiGenerateContent({
+  const rawText = await callGeminiGenerateContent({
     model: DEFAULT_MODEL,
     systemInstruction,
     userPrompt: prompt,
     temperature: 0.8,
     maxOutputTokens: 1800,
   });
+  const text = confusionSignal ? ensureTutorFollowUp(rawText) : rawText;
 
   const diagnostics = {
     model: DEFAULT_MODEL,
@@ -127,8 +196,34 @@ export const generateTutorResponse = onCall({ region: REGION, timeoutSeconds: 60
     toolCalls: [],
     budget: { maxOutputTokens: 1800 },
     generatedAt: new Date().toISOString(),
+    missionState: {
+      difficultyLevel: missionState.difficultyLevel || 'beginner',
+      weakTopics: (missionState.weakTopics || []).slice(0, 3),
+      nextStep: missionState.nextStep || '',
+      confusionCount: Number(missionState.confusionCount || 0),
+    },
+    followUpInjected: confusionSignal,
   };
   diagnosticsByUser.set(uid, diagnostics);
+
+  const weakTopics = Array.from(
+    new Set([
+      ...(Array.isArray(missionState.weakTopics) ? missionState.weakTopics : []),
+      ...(String(userMessage || '')
+        .toLowerCase()
+        .includes('confus') ? [currentModule?.title || companion?.topic || 'current topic'] : []),
+    ])
+  ).slice(0, 5);
+
+  await updateMissionState(uid, companionId, {
+    interactions: nextInteractionCount,
+    confusionCount: nextConfusionCount,
+    difficultyLevel,
+    weakTopics,
+    nextStep: currentModule
+      ? `Continue ${currentModule.title} and verify understanding with one checkpoint question.`
+      : missionState.nextStep || 'Start module 1 with goals and expectations.',
+  });
 
   return { text, diagnostics };
 });
@@ -142,10 +237,14 @@ export const generateAdaptiveQuiz = onCall({ region: REGION, timeoutSeconds: 60 
     moduleDescription = '',
     conversationTranscript = '',
     adaptiveContext = {},
+    companionId = 'default',
   } = request.data || {};
+  const missionState = await getMissionState(uid, companionId);
 
-  const level = adaptiveContext?.difficultyLevel || 'intermediate';
-  const weakTopics = Array.isArray(adaptiveContext?.weakTopics) ? adaptiveContext.weakTopics.slice(0, 3).join(', ') : 'none';
+  const level = adaptiveContext?.difficultyLevel || missionState?.difficultyLevel || 'intermediate';
+  const weakTopics = Array.isArray(adaptiveContext?.weakTopics)
+    ? adaptiveContext.weakTopics.slice(0, 3).join(', ')
+    : (missionState?.weakTopics || []).slice(0, 3).join(', ') || 'none';
 
   const prompt = `You are a strict JSON generator.
 Generate exactly 3 multiple choice questions.
@@ -181,6 +280,10 @@ Return only a JSON array. Each item:
   } catch {
     throw new HttpsError('internal', 'Failed to parse adaptive quiz JSON.');
   }
+
+  await updateMissionState(uid, companionId, {
+    nextStep: `Review quiz results for ${moduleTitle} and decide whether to reinforce or advance.`,
+  });
 
   return { questions };
 });

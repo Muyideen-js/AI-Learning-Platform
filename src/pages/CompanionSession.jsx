@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc, updateDoc, setDoc, increment, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { generateAIResponse as getAIResponse } from '../lib/gemini';
+import { generateAIResponse as getAIResponse, getTutorDiagnostics } from '../lib/gemini';
 import { getUserLearningMemory, updateLearningMemoryAfterTurn } from '../lib/memory';
 import { getReasoningState } from '../lib/reasoningState';
 import { generateDynamicQuiz } from '../lib/gemini';
@@ -123,6 +123,25 @@ const CompanionSession = () => {
   const handleAIDiagnostics = useCallback((data) => {
     setAiDiagnostics(data);
   }, []);
+
+  useEffect(() => {
+    if (!isAdminUser || !showDiagnostics || !sessionStarted) return;
+
+    let cancelled = false;
+    const refresh = async () => {
+      const diag = await getTutorDiagnostics();
+      if (!cancelled && diag) {
+        setAiDiagnostics((prev) => ({ ...(prev || {}), ...diag }));
+      }
+    };
+
+    refresh();
+    const interval = setInterval(refresh, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isAdminUser, showDiagnostics, sessionStarted]);
 
   // Page Tour Onboarding (Driver.js)
   useEffect(() => {
@@ -804,7 +823,8 @@ const CompanionSession = () => {
         module.title,
         module.description,
         transcriptText,
-        { weakTopics, difficultyLevel }
+        { weakTopics, difficultyLevel },
+        id
       );
 
       if (generated && generated.length > 0) {
@@ -1369,6 +1389,10 @@ const CompanionSession = () => {
                 <div><strong>Cache:</strong> {aiDiagnostics.cacheHit ? 'hit' : 'miss'}</div>
                 <div><strong>Tools:</strong> {(aiDiagnostics.toolCalls || []).join(', ') || 'none'}</div>
                 <div><strong>Tokens:</strong> {aiDiagnostics.budget?.maxOutputTokens || 'n/a'}</div>
+                <div><strong>Level:</strong> {aiDiagnostics.missionState?.difficultyLevel || 'n/a'}</div>
+                <div><strong>Confusion:</strong> {aiDiagnostics.missionState?.confusionCount ?? 'n/a'}</div>
+                <div><strong>Weak:</strong> {(aiDiagnostics.missionState?.weakTopics || []).join(', ') || 'none'}</div>
+                <div><strong>Next:</strong> {aiDiagnostics.missionState?.nextStep || 'n/a'}</div>
               </div>
             )}
 
