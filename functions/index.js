@@ -129,6 +129,80 @@ function ensureTutorFollowUp(text) {
   return `${trimmed}\n\nQuick check: does this part make sense, or should I simplify it further?`;
 }
 
+export const evaluateQuizAttempt = onCall({ region: REGION, timeoutSeconds: 30 }, async (request) => {
+  const uid = requireAuth(request);
+  checkRateLimit(uid, 40, 60_000);
+
+  const {
+    companionId = 'default',
+    moduleTitle = 'Current Module',
+    score = 0,
+    passed = false,
+  } = request.data || {};
+
+  const missionState = await getMissionState(uid, companionId);
+  const safeScore = Math.max(0, Math.min(Number(score) || 0, 100));
+  const pass = Boolean(passed);
+
+  const interactions = Number(missionState.interactions || 0) + 1;
+  const confusionCount = Math.max(
+    0,
+    Number(missionState.confusionCount || 0) + (pass ? -1 : 1)
+  );
+  const difficultyLevel = chooseDifficulty({
+    priorDifficulty: missionState.difficultyLevel,
+    interactions,
+    confusionCount,
+  });
+
+  const weakTopics = pass
+    ? (missionState.weakTopics || []).filter((topic) => topic !== moduleTitle).slice(0, 5)
+    : Array.from(new Set([...(missionState.weakTopics || []), moduleTitle])).slice(0, 5);
+
+  await updateMissionState(uid, companionId, {
+    interactions,
+    confusionCount,
+    difficultyLevel,
+    weakTopics,
+    completedModules: Number(missionState.completedModules || 0) + (pass ? 1 : 0),
+    lastQuiz: {
+      moduleTitle,
+      score: safeScore,
+      passed: pass,
+      at: new Date().toISOString(),
+    },
+    nextStep: pass
+      ? `Great progress. Continue to the next module after a short recap.`
+      : `Revisit ${moduleTitle} fundamentals and retake a quick checkpoint quiz.`,
+  });
+
+  return {
+    accepted: true,
+    summary: pass
+      ? `Passed ${moduleTitle} with ${safeScore}%.`
+      : `Needs reinforcement in ${moduleTitle} (${safeScore}%).`,
+  };
+});
+
+export const getLearningProgressSummary = onCall({ region: REGION, timeoutSeconds: 30 }, async (request) => {
+  const uid = requireAuth(request);
+  checkRateLimit(uid, 60, 60_000);
+
+  const { companionId = 'default' } = request.data || {};
+  const missionState = await getMissionState(uid, companionId);
+
+  const summary = {
+    modulesCompleted: Number(missionState.completedModules || 0),
+    interactions: Number(missionState.interactions || 0),
+    weakTopics: Array.isArray(missionState.weakTopics) ? missionState.weakTopics.slice(0, 4) : [],
+    difficultyLevel: missionState.difficultyLevel || 'beginner',
+    nextStep: missionState.nextStep || '',
+    lastQuiz: missionState.lastQuiz || null,
+  };
+
+  return { summary };
+});
+
 export const generateTutorResponse = onCall({ region: REGION, timeoutSeconds: 60 }, async (request) => {
   const uid = requireAuth(request);
   checkRateLimit(uid, 40, 60_000);

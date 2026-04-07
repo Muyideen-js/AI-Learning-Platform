@@ -6,6 +6,8 @@ const callAdaptiveQuiz = httpsCallable(functions, 'generateAdaptiveQuiz');
 const callCodeReview = httpsCallable(functions, 'evaluateCodeSubmission');
 const callCurriculum = httpsCallable(functions, 'generateCompanionCurriculum');
 const callTutorDiagnostics = httpsCallable(functions, 'getTutorDiagnostics');
+const callEvaluateQuizAttempt = httpsCallable(functions, 'evaluateQuizAttempt');
+const callLearningProgressSummary = httpsCallable(functions, 'getLearningProgressSummary');
 
 export const generateAIResponse = async (
   userMessage,
@@ -138,6 +140,26 @@ export const getTutorDiagnostics = async () => {
     return result?.data?.diagnostics || null;
   } catch (error) {
     console.error('Diagnostics fetch failed:', error);
+    return null;
+  }
+};
+
+export const evaluateQuizAttempt = async ({ companionId, moduleTitle, score, passed }) => {
+  try {
+    const result = await callEvaluateQuizAttempt({ companionId, moduleTitle, score, passed });
+    return result?.data || null;
+  } catch (error) {
+    console.error('Quiz attempt evaluation failed:', error);
+    return null;
+  }
+};
+
+export const getLearningProgressSummary = async (companionId) => {
+  try {
+    const result = await callLearningProgressSummary({ companionId });
+    return result?.data?.summary || null;
+  } catch (error) {
+    console.error('Progress summary fetch failed:', error);
     return null;
   }
 };

@@ -3,7 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc, updateDoc, setDoc, increment, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { generateAIResponse as getAIResponse, getTutorDiagnostics } from '../lib/gemini';
+import {
+  generateAIResponse as getAIResponse,
+  getTutorDiagnostics,
+  evaluateQuizAttempt as evaluateQuizAttemptOnServer,
+  getLearningProgressSummary
+} from '../lib/gemini';
 import { getUserLearningMemory, updateLearningMemoryAfterTurn } from '../lib/memory';
 import { getReasoningState } from '../lib/reasoningState';
 import { generateDynamicQuiz } from '../lib/gemini';
@@ -371,6 +376,17 @@ const CompanionSession = () => {
           weakTopics,
           nextStep: reasoning?.nextStep || ''
         });
+
+        const serverSummary = await getLearningProgressSummary(id);
+        if (serverSummary) {
+          setLearnerInsights((prev) => ({
+            ...prev,
+            modulesCompleted: Math.max(prev.modulesCompleted || 0, serverSummary.modulesCompleted || 0),
+            interactions: Math.max(prev.interactions || 0, serverSummary.interactions || 0),
+            weakTopics: serverSummary.weakTopics?.length ? serverSummary.weakTopics : prev.weakTopics,
+            nextStep: serverSummary.nextStep || prev.nextStep,
+          }));
+        }
       } catch (err) {
         console.error('Error loading learner insights:', err);
       }
@@ -904,6 +920,13 @@ const CompanionSession = () => {
       currentModule: companion?.curriculum?.find(m => m.id === quizModuleId) || null,
       quizEvent: { type: 'pass', score }
     });
+
+    await evaluateQuizAttemptOnServer({
+      companionId: id,
+      moduleTitle: companion?.curriculum?.find(m => m.id === quizModuleId)?.title || `Module ${quizModuleId}`,
+      score,
+      passed: true,
+    });
   };
 
   // Handle quiz fail
@@ -919,6 +942,13 @@ const CompanionSession = () => {
       assistantMessage: `Quiz failed with score ${score}%`,
       currentModule: companion?.curriculum?.find(m => m.id === quizModuleId) || null,
       quizEvent: { type: 'fail', score }
+    });
+
+    await evaluateQuizAttemptOnServer({
+      companionId: id,
+      moduleTitle: companion?.curriculum?.find(m => m.id === quizModuleId)?.title || `Module ${quizModuleId}`,
+      score,
+      passed: false,
     });
   };
 
