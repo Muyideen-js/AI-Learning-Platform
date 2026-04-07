@@ -1416,6 +1416,7 @@ const CompanionSession = () => {
             {isAdminUser && showDiagnostics && aiDiagnostics && (
               <div style={{ padding: '8px 10px', border: '1px solid var(--border-light)', borderRadius: '8px', background: 'var(--bg-secondary)', fontSize: '11px', lineHeight: 1.4, maxWidth: '360px' }}>
                 <div><strong>Model:</strong> {aiDiagnostics.model}</div>
+                <div><strong>Fallback:</strong> {aiDiagnostics.usedFallback ? 'yes' : 'no'}</div>
                 <div><strong>Cache:</strong> {aiDiagnostics.cacheHit ? 'hit' : 'miss'}</div>
                 <div><strong>Tools:</strong> {(aiDiagnostics.toolCalls || []).join(', ') || 'none'}</div>
                 <div><strong>Tokens:</strong> {aiDiagnostics.budget?.maxOutputTokens || 'n/a'}</div>

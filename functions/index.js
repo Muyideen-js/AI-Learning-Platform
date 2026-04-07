@@ -7,12 +7,16 @@ const db = getFirestore();
 
 const rateLimitMap = new Map();
 const diagnosticsByUser = new Map();
+const responseCache = new Map();
 
 const REGION = 'us-central1';
 const GEMINI_VERSION = 'v1beta';
 const DEFAULT_MODEL = 'gemini-2.0-flash';
+const FALLBACK_MODEL = 'gemini-1.5-flash';
 const MISSION_COLLECTION = 'learningMissionState';
 const CONFUSION_MARKERS = ['confused', "don't understand", 'not clear', 'hard', 'difficult', 'stuck'];
+const CACHE_TTL_MS = 1000 * 60 * 5;
+const MAX_CACHE_ENTRIES = 500;
 
 function requireAuth(request) {
   if (!request.auth?.uid) {
@@ -78,6 +82,64 @@ async function callGeminiGenerateContent({ model = DEFAULT_MODEL, systemInstruct
     throw new HttpsError('internal', 'Gemini returned empty response.');
   }
   return text;
+}
+
+async function callGeminiWithFallback(params) {
+  try {
+    const text = await callGeminiGenerateContent({ ...params, model: params.model || DEFAULT_MODEL });
+    return { text, modelUsed: params.model || DEFAULT_MODEL, usedFallback: false };
+  } catch (error) {
+    const maybeRetryable = String(error?.message || '').includes('Gemini error (503)')
+      || String(error?.message || '').includes('Gemini error (429)');
+    if (!maybeRetryable) throw error;
+    const text = await callGeminiGenerateContent({ ...params, model: FALLBACK_MODEL });
+    return { text, modelUsed: FALLBACK_MODEL, usedFallback: true };
+  }
+}
+
+function sanitizeForCache(input = '') {
+  return String(input || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 400);
+}
+
+function makeCacheKey({ uid, companionId, moduleId, userMessage }) {
+  return `${uid}::${companionId || 'default'}::${moduleId || 'none'}::${sanitizeForCache(userMessage)}`;
+}
+
+function cleanupCache() {
+  const now = Date.now();
+  for (const [key, value] of responseCache.entries()) {
+    if (now - value.ts > CACHE_TTL_MS) {
+      responseCache.delete(key);
+    }
+  }
+  if (responseCache.size <= MAX_CACHE_ENTRIES) return;
+  const sorted = Array.from(responseCache.entries()).sort((a, b) => a[1].ts - b[1].ts);
+  const overflow = responseCache.size - MAX_CACHE_ENTRIES;
+  for (let i = 0; i < overflow; i += 1) {
+    responseCache.delete(sorted[i][0]);
+  }
+}
+
+function getCachedResponse(key) {
+  const entry = responseCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL_MS) {
+    responseCache.delete(key);
+    return null;
+  }
+  return entry;
+}
+
+function setCachedResponse(key, payload) {
+  responseCache.set(key, { ...payload, ts: Date.now() });
+  cleanupCache();
+}
+
+function getOutputBudget(userMessage = '') {
+  const len = String(userMessage || '').length;
+  if (len < 80) return 900;
+  if (len < 300) return 1400;
+  return 1900;
 }
 
 function missionDocId(uid, companionId) {
@@ -254,21 +316,45 @@ export const generateTutorResponse = onCall({ region: REGION, timeoutSeconds: 60
     `Student message: ${userMessage}`,
     fileHint,
   ].filter(Boolean).join('\n\n');
-
-  const rawText = await callGeminiGenerateContent({
-    model: DEFAULT_MODEL,
-    systemInstruction,
-    userPrompt: prompt,
-    temperature: 0.8,
-    maxOutputTokens: 1800,
+  const maxOutputTokens = getOutputBudget(userMessage);
+  const cacheKey = makeCacheKey({
+    uid,
+    companionId,
+    moduleId: currentModule?.id || currentModule?.title || '',
+    userMessage,
   });
-  const text = confusionSignal ? ensureTutorFollowUp(rawText) : rawText;
+  const cached = getCachedResponse(cacheKey);
+  let text;
+  let modelUsed = DEFAULT_MODEL;
+  let usedFallback = false;
+  let cacheHit = false;
+
+  if (cached) {
+    text = cached.text;
+    modelUsed = cached.modelUsed || DEFAULT_MODEL;
+    usedFallback = Boolean(cached.usedFallback);
+    cacheHit = true;
+  } else {
+    const generation = await callGeminiWithFallback({
+      model: DEFAULT_MODEL,
+      systemInstruction,
+      userPrompt: prompt,
+      temperature: 0.8,
+      maxOutputTokens,
+    });
+    const rawText = generation.text;
+    text = confusionSignal ? ensureTutorFollowUp(rawText) : rawText;
+    modelUsed = generation.modelUsed;
+    usedFallback = generation.usedFallback;
+    setCachedResponse(cacheKey, { text, modelUsed, usedFallback });
+  }
 
   const diagnostics = {
-    model: DEFAULT_MODEL,
-    cacheHit: false,
+    model: modelUsed,
+    cacheHit,
+    usedFallback,
     toolCalls: [],
-    budget: { maxOutputTokens: 1800 },
+    budget: { maxOutputTokens },
     generatedAt: new Date().toISOString(),
     missionState: {
       difficultyLevel: missionState.difficultyLevel || 'beginner',
