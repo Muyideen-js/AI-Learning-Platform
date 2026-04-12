@@ -6,6 +6,7 @@ import CompanionCard from '../components/CompanionCard';
 import CustomSelect from '../components/CustomSelect';
 import { Search, Filter, ArrowLeft, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import BooksLibrary from '../components/BooksLibrary';
 import './CompanionLibrary.css';
 
 const SUBJECTS = [
@@ -21,6 +22,8 @@ const SUBJECTS = [
 const CompanionLibrary = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const [activeTab, setActiveTab] = useState('companions'); // 'companions' | 'books'
+  
   const [companions, setCompanions] = useState([]);
   const [myCompanions, setMyCompanions] = useState([]);
   const [otherCompanions, setOtherCompanions] = useState([]);
@@ -87,31 +90,68 @@ const CompanionLibrary = () => {
               <Home size={20} />
             </button>
           </div>
-          <h1 className="page-title" style={{ margin: 0 }}>Companion Library</h1>
+          <h1 className="page-title" style={{ margin: 0 }}>Library</h1>
         </div>
 
-        <div className="library-filters">
-          <div className="search-box">
-            <Search size={18} />
-            <input
-              type="text"
-              placeholder="Search companions..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
-          </div>
-
-          <div className="filter-box">
-            <Filter size={18} />
-            <CustomSelect
-              value={selectedSubject}
-              onChange={setSelectedSubject}
-              options={SUBJECTS}
-              placeholder="Filter by subject"
-            />
-          </div>
+        <div className="library-tabs" style={{ display: 'flex', gap: '16px', marginBottom: '32px', borderBottom: '2px solid var(--border-light)', paddingBottom: '8px' }}>
+          <button 
+            onClick={() => setActiveTab('companions')}
+            style={{ 
+              background: 'transparent', 
+              border: 'none', 
+              color: activeTab === 'companions' ? 'var(--text-primary)' : 'var(--text-secondary)',
+              fontSize: '1.2rem',
+              fontWeight: activeTab === 'companions' ? '700' : '500',
+              cursor: 'pointer',
+              position: 'relative',
+              padding: '8px 16px',
+            }}
+          >
+            AI Companions
+            {activeTab === 'companions' && <div style={{ position: 'absolute', bottom: '-10px', left: 0, width: '100%', height: '2px', background: 'var(--text-primary)' }} />}
+          </button>
+          <button 
+            onClick={() => setActiveTab('books')}
+            style={{ 
+              background: 'transparent', 
+              border: 'none', 
+              color: activeTab === 'books' ? 'var(--text-primary)' : 'var(--text-secondary)',
+              fontSize: '1.2rem',
+              fontWeight: activeTab === 'books' ? '700' : '500',
+              cursor: 'pointer',
+              position: 'relative',
+              padding: '8px 16px',
+            }}
+          >
+            Books & PDFs
+            {activeTab === 'books' && <div style={{ position: 'absolute', bottom: '-10px', left: 0, width: '100%', height: '2px', background: 'var(--text-primary)' }} />}
+          </button>
         </div>
+
+        {activeTab === 'companions' ? (
+          <>
+            <div className="library-filters">
+              <div className="search-box">
+                <Search size={18} />
+                <input
+                  type="text"
+                  placeholder="Search companions..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+
+              <div className="filter-box">
+                <Filter size={18} />
+                <CustomSelect
+                  value={selectedSubject}
+                  onChange={setSelectedSubject}
+                  options={SUBJECTS}
+                  placeholder="Filter by subject"
+                />
+              </div>
+            </div>
 
         {loading ? (
           <div className="loading">Loading companions...</div>
@@ -179,6 +219,10 @@ const CompanionLibrary = () => {
               </div>
             )}
           </>
+        )}
+          </>
+        ) : (
+          <BooksLibrary />
         )}
       </div>
     </div>

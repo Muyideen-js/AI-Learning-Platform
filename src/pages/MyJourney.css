@@ -1,441 +1,262 @@
+/* Dashboard Redesign Base */
 .journey-page {
   min-height: 100vh;
-  padding: 80px 24px 80px;
-  position: relative;
-  overflow: hidden;
   background: var(--bg-primary);
   color: var(--text-primary);
+  position: relative;
+  overflow-x: hidden;
+  padding-bottom: 60px;
 }
 
-/* Remove all glowing orbs - strict B&W theme */
-.journey-bg-effects {
-  display: none;
-}
-
-/* Layout Wrapper */
 .journey-content-wrapper {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 40px 24px;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
-/* B&W Glass Panels */
-.glass-panel {
-  background: var(--bg-secondary);
-  border: 2px solid var(--border-light);
-  border-radius: 0px; 
-  transition: all 0.3s ease;
-}
-
-.glass-panel:hover {
-  border-color: var(--text-primary);
-}
-
-.gradient-text {
-  /* Strict B&W */
-  color: var(--text-primary);
-}
-
-/* Nav Bar */
-.journey-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 50px;
-}
-
-.nav-buttons {
-  display: flex;
-  gap: 12px;
-}
-
-.glass-btn {
-  background: var(--bg-primary);
-  border: 2px solid var(--border-light);
-  color: var(--text-primary);
-  border-radius: 0px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.glass-btn.icon-only {
-  width: 44px;
-  height: 44px;
-}
-
-.glass-btn:hover {
-  background: var(--text-primary);
-  color: var(--bg-primary);
-  border-color: var(--text-primary);
-}
-
-.glass-btn:hover svg {
-  stroke: var(--bg-primary);
-}
-
-.streak-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: var(--bg-primary);
-  border: 2px solid var(--text-primary);
+.page-title.minimal {
+  font-size: 1.5rem;
+  margin: 0;
   font-weight: 700;
-  font-size: 0.9rem;
-  color: var(--text-primary);
-}
-
-/* Hero Section */
-.journey-hero {
-  text-align: center;
-  margin-bottom: 60px;
-}
-
-.journey-hero h1 {
-  font-size: 2.2rem;
-  font-weight: 800;
-  margin-bottom: 12px;
   letter-spacing: -0.02em;
 }
 
-.hero-subtitle {
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-  line-height: 1.6;
-  max-width: 500px;
-  margin: 0 auto;
-}
-
-/* Metrics Grid */
-.metrics-grid {
+.dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 24px;
-  margin-bottom: 60px;
+  grid-template-columns: 2.5fr 1fr;
+  gap: 32px;
+  margin-top: 32px;
 }
 
-.metric-card {
-  padding: 18px 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.metric-icon-box {
-  width: 52px;
-  height: 52px;
-  border-radius: 0px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 2px solid var(--border-light);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-}
-
-.metric-value {
-  display: block;
-  font-size: 1.6rem;
-  font-weight: 800;
-  line-height: 1;
-  margin-bottom: 4px;
-  color: var(--text-primary);
-}
-
-.metric-label {
-  font-size: 0.7rem;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 600;
-}
-
-/* Achievements Holographic Cards -> Flat B&W Cards */
-.achievements-section {
-  margin-bottom: 60px;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 30px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid var(--border-light);
-}
-
-.section-header h2 {
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-
-.section-icon {
-  color: var(--text-primary);
-}
-
-.achievements-deck {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 20px;
-}
-
-.achievement-card {
-  padding: 24px 20px;
-  text-align: center;
-  position: relative;
-  transition: all 0.3s ease;
-  min-height: 180px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-
-.achievement-icon-wrapper {
-  margin-bottom: 12px;
-  color: var(--text-secondary);
-}
-
-.achievement-name {
-  font-size: 1rem;
-  font-weight: 700;
-  margin-bottom: 6px;
-  color: var(--text-primary);
-}
-
-.achievement-desc {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  line-height: 1.4;
-  margin-bottom: 16px;
-}
-
-/* Locked Card State */
-.achievement-card.locked {
-  opacity: 0.4;
-  background: var(--bg-tertiary);
-  border-color: var(--border-light);
-}
-
-.achievement-progress-bar {
-  width: 100%;
-  height: 6px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-light);
-  margin-top: auto;
-}
-
-.progress-fill {
-  height: 100%;
-  background: var(--text-primary);
-  transition: width 1s ease-in-out;
-}
-
-/* Unlocked Card State */
-.achievement-card.unlocked {
-  background: var(--bg-secondary);
-  border-color: var(--text-primary);
-}
-
-.achievement-card.unlocked .achievement-icon-wrapper {
-  color: var(--text-primary);
-}
-
-.achievement-card.unlocked:hover {
-  background: var(--text-primary);
-}
-
-.achievement-card.unlocked:hover .achievement-name,
-.achievement-card.unlocked:hover .achievement-desc {
-  color: var(--bg-primary);
-}
-
-.achievement-card.unlocked:hover .achievement-icon-wrapper {
-  color: var(--bg-primary);
-}
-
-.achievement-card.unlocked:hover .unlocked-badge {
-  color: var(--bg-primary);
-  border-color: var(--bg-primary);
-}
-
-.unlocked-badge {
-  margin-top: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 0.75rem;
-  font-weight: 700;
-  border: 2px solid var(--text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* Call to action */
-.journey-cta {
-  padding: 30px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: var(--bg-secondary);
-  border: 2px solid var(--border-light);
-}
-
-.cta-content h3 {
-  font-size: 1.25rem;
-  font-weight: 800;
-  margin-bottom: 6px;
-}
-
-.cta-content p {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.btn-glow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  background: var(--text-primary);
-  color: var(--bg-primary);
-  font-weight: 700;
-  font-size: 0.9rem;
-  border: 2px solid var(--text-primary);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.btn-glow:hover {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-}
-
-/* Loader */
-.journey-loader {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 60vh;
-  gap: 20px;
-  color: var(--text-primary);
-}
-
-.glow-icon {
-  color: var(--text-primary);
-}
-
-/* Responsive */
-@media (max-width: 900px) {
-  .journey-cta {
-    flex-direction: column;
-    text-align: center;
-    gap: 24px;
-  }
-}
-
-@media (max-width: 600px) {
-  .journey-page {
-    padding: 40px 16px;
-  }
-  
-  .journey-hero h1 {
-    font-size: 2.2rem;
-  }
-  
-  .achievements-deck {
+@media (max-width: 968px) {
+  .dashboard-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* Realistic Multi-layer CSS Fire Animation for Streak */
-.amazing-fire {
-  position: relative;
-  width: 32px;
-  height: 32px;
+/* Metrics Row */
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.metric-box {
+  padding: 24px;
   display: flex;
-  justify-content: center;
   align-items: center;
-  margin-right: 8px;
+  gap: 16px;
+  border-radius: 12px;
 }
 
-.flame-main, .flame-middle, .flame-inner, .flame-bottom {
-  position: absolute;
-  bottom: 0;
-  border-radius: 50% 0 50% 50%;
-  transform: rotate(-45deg);
-  transition: all 0.2s;
+.metric-icon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
 }
 
-.flame-main {
-  width: 30px;
-  height: 30px;
-  background: #ff5722;
-  box-shadow: 0 0 10px #ff5722, 0 0 20px #ff5722, 0 0 30px #ff5722;
-  animation: flame-pulse-1 0.8s infinite alternate ease-in-out;
-  bottom: 2px;
+.metric-text {
+  display: flex;
+  flex-direction: column;
 }
 
-.flame-middle {
-  width: 22px;
-  height: 22px;
-  background: #ff9800;
-  bottom: 4px;
-  box-shadow: 0 0 10px #ff9800, 0 0 15px #ff9800;
-  animation: flame-pulse-2 0.6s infinite alternate ease-in-out;
+.metric-text .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
-.flame-inner {
+.metric-text .label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Contribution Board (GitHub Style) */
+.contribution-board {
+  padding: 24px;
+  border-radius: 12px;
+  margin-bottom: 40px;
+}
+
+.board-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.board-header h3 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.board-header span {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.board-grid {
+  display: grid;
+  grid-template-rows: repeat(7, 1fr);
+  grid-auto-flow: column;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+}
+
+.activity-block {
   width: 14px;
   height: 14px;
-  background: #ffeb3b;
-  bottom: 6px;
-  box-shadow: 0 0 8px #ffeb3b;
-  animation: flame-pulse-3 0.4s infinite alternate ease-in-out;
+  border-radius: 2px;
+  background: var(--bg-tertiary);
+  transition: transform 0.2s;
 }
 
-.flame-bottom {
-  width: 16px;
-  height: 16px;
-  background: linear-gradient(to top, rgba(255,255,255,0.8), rgba(255,255,255,0));
-  bottom: 0px;
-  border-radius: 50%;
-  transform: none;
-  animation: flame-base 1s infinite alternate ease-in-out;
+.activity-block:hover {
+  transform: scale(1.2);
 }
 
-@keyframes flame-pulse-1 {
-  0% { transform: scale(1) rotate(-45deg); box-shadow: 0 0 15px #ff5722, 0 0 25px #ff5722; filter: blur(1px); }
-  25% { transform: scale(1.05) rotate(-42deg) skewX(2deg); filter: blur(0px); }
-  50% { transform: scale(0.95) rotate(-48deg) skewX(-2deg); box-shadow: 0 0 10px #ff5722, 0 0 35px #ff5722; filter: blur(1px); }
-  75% { transform: scale(1.1) rotate(-44deg) skewX(1deg); filter: blur(0.5px); }
-  100% { transform: scale(1) rotate(-45deg); box-shadow: 0 0 20px #ff5722, 0 0 45px #ff5722; filter: blur(0px); }
+.activity-block.level-0 { background: #1a1a1a; }
+.activity-block.level-1 { background: #0e4429; }
+.activity-block.level-2 { background: #006d32; }
+.activity-block.level-3 { background: #26a641; }
+.activity-block.level-4 { background: #39d353; } /* GitHub contribution colors */
+
+.board-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 12px;
 }
 
-@keyframes flame-pulse-2 {
-  0% { transform: scale(1) rotate(-45deg); }
-  50% { transform: scale(0.9) rotate(-40deg) skewX(3deg); }
-  100% { transform: scale(1.1) rotate(-50deg) skewX(-3deg); }
+/* Sections */
+.content-section {
+  margin-bottom: 40px;
 }
 
-@keyframes flame-pulse-3 {
-  0% { transform: scale(1) rotate(-45deg); }
-  50% { transform: scale(1.2) rotate(-52deg) skewX(-4deg); }
-  100% { transform: scale(0.8) rotate(-38deg) skewX(4deg); }
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
 }
 
-@keyframes flame-base {
-  0% { opacity: 0.8; transform: scale(1); }
-  100% { opacity: 0.4; transform: scale(0.9); }
+.section-header h2 {
+  font-size: 1.1rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.text-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.text-btn:hover {
+  color: var(--text-primary);
+}
+
+/* Horizontal Scroll Grid */
+.horizontal-scroll-grid {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 16px;
+}
+
+.mini-card {
+  min-width: 200px;
+  max-width: 200px;
+  padding: 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+
+.mini-card:hover {
+  border-color: var(--text-secondary);
+  transform: translateY(-2px);
+}
+
+.card-icon {
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+}
+
+.mini-card h4 {
+  font-size: 14px;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-card span {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.empty-panel {
+  padding: 24px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  width: 100%;
+}
+
+/* Sidebar Elements */
+.journey-cta {
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  border-radius: 12px;
+}
+
+.cta-icon {
+  color: #f1c40f;
+  margin-bottom: 8px;
+}
+
+.cta-content h3 {
+  font-size: 1.2rem;
+  margin: 0 0 8px 0;
+}
+
+.cta-content p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0;
+}
+
+.btn-glow {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  width: 100%;
 }

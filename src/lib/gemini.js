@@ -8,6 +8,22 @@ const callCurriculum = httpsCallable(functions, 'generateCompanionCurriculum');
 const callTutorDiagnostics = httpsCallable(functions, 'getTutorDiagnostics');
 const callEvaluateQuizAttempt = httpsCallable(functions, 'evaluateQuizAttempt');
 const callLearningProgressSummary = httpsCallable(functions, 'getLearningProgressSummary');
+const callBookResponse = httpsCallable(functions, 'generateBookResponse');
+
+export const generateBookAIResponse = async ({ action, bookContext, userMessage, conversationHistory }) => {
+  try {
+    const result = await callBookResponse({
+      action,
+      bookContext,
+      userMessage,
+      conversationHistory
+    });
+    return result?.data?.text || result?.data || null;
+  } catch (error) {
+    console.error('Book AI Response Error:', error);
+    throw new Error('Failed to communicate with AI for this book.');
+  }
+};
 
 export const generateAIResponse = async (
   userMessage,
@@ -32,6 +48,7 @@ export const generateAIResponse = async (
     });
 
     const text = result?.data?.text || "I'm having trouble connecting to my service right now.";
+   
     const diagnostics = result?.data?.diagnostics || null;
 
     if (diagnostics && typeof memoryMeta?.onDiagnostics === 'function') {

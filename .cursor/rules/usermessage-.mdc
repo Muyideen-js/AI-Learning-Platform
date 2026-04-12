@@ -1,0 +1,13 @@
+---
+alwaysApply: true
+---
+
+userMessage,
+      companion,
+      conversationHistory,
+      currentModule,
+      fileData,
+      memoryMeta: {
+        userId: memoryMeta?.userId || null,
+        companionId: memoryMeta?.companionId || null,
+      },

@@ -12,6 +12,7 @@ import MyJourney from './pages/MyJourney';
 import Subscription from './pages/Subscription';
 import NotFound from './pages/NotFound';
 import Profile from './pages/Profile';
+import BookReader from './pages/BookReader';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
@@ -53,6 +54,14 @@ function AppContent() {
             element={
               <PrivateRoute>
                 <MyJourney />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/book/:id"
+            element={
+              <PrivateRoute>
+                <BookReader />
               </PrivateRoute>
             }
           />

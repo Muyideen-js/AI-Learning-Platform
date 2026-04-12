@@ -543,3 +543,52 @@ export const getTutorDiagnostics = onCall({ region: REGION }, async (request) =>
   const uid = requireAuth(request);
   return { diagnostics: diagnosticsByUser.get(uid) || null };
 });
+
+export const generateBookResponse = onCall({ region: REGION, timeoutSeconds: 120 }, async (request) => {
+  const uid = requireAuth(request);
+  checkRateLimit(uid, 40, 60_000);
+
+  const {
+    action = 'chat', // 'chat', 'summarize', 'quiz'
+    bookContext = '',
+    userMessage = '',
+    conversationHistory = []
+  } = request.data || {};
+
+  if (!bookContext || typeof bookContext !== 'string') {
+    throw new HttpsError('invalid-argument', 'Book context is required.');
+  }
+
+  const safeContext = bookContext.substring(0, 150000);
+
+  let prompt = '';
+  let maxTokens = 2048;
+  let temp = 0.7;
+  let sysInstruction = 'You are a helpful AI reading assistant.';
+
+  if (action === 'summarize') {
+    prompt = `Please provide a comprehensive summary of the following text:\n\n${safeContext}`;
+    temp = 0.5;
+  } else if (action === 'quiz') {
+    prompt = `Based on the following text, generate a JSON array of exactly 3 multiple choice questions.\nReturn only a JSON array. Each item:\n{\n  "question":"...",\n  "options":["A","B","C","D"],\n  "correctAnswer":0,\n  "explanation":"..."\n}\n\nText:\n${safeContext}`;
+    temp = 0.3;
+    maxTokens = 1500;
+  } else if (action === 'chat') {
+    const historyText = Array.isArray(conversationHistory) 
+      ? conversationHistory.slice(-10).map((m) => `${m.role === 'assistant' ? 'AI' : 'User'}: ${m.content}`).join('\n')
+      : '';
+    prompt = `Context Document:\n${safeContext}\n\n${historyText ? `Conversation History:\n${historyText}\n\n` : ''}User Question: ${userMessage}\n\nAnswer the user's question explicitly based on the context document provided. If the answer is not in the document, state that politely.`;
+  } else {
+    throw new HttpsError('invalid-argument', 'Invalid action type.');
+  }
+
+  const responseText = await callGeminiGenerateContent({
+    model: DEFAULT_MODEL,
+    systemInstruction: sysInstruction,
+    userPrompt: prompt,
+    temperature: temp,
+    maxOutputTokens: maxTokens
+  });
+
+  return { text: responseText };
+});
