@@ -100,11 +100,11 @@ const CompanionLibrary = () => {
               background: 'transparent', 
               border: 'none', 
               color: activeTab === 'companions' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              fontSize: '1.2rem',
+              fontSize: '1rem',
               fontWeight: activeTab === 'companions' ? '700' : '500',
               cursor: 'pointer',
               position: 'relative',
-              padding: '8px 16px',
+              padding: '6px 12px',
             }}
           >
             AI Companions
@@ -116,11 +116,11 @@ const CompanionLibrary = () => {
               background: 'transparent', 
               border: 'none', 
               color: activeTab === 'books' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              fontSize: '1.2rem',
+              fontSize: '1rem',
               fontWeight: activeTab === 'books' ? '700' : '500',
               cursor: 'pointer',
               position: 'relative',
-              padding: '8px 16px',
+              padding: '6px 12px',
             }}
           >
             Books & PDFs
@@ -159,8 +159,8 @@ const CompanionLibrary = () => {
           <>
             {/* My Companions Section */}
             {myCompanions.length > 0 ? (
-              <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '20px', color: 'var(--text-primary)' }}>
+              <div style={{ marginBottom: '32px' }}>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '16px', color: 'var(--text-primary)' }}>
                   📚 My Companions
                 </h2>
                 <div className="grid grid-3">
@@ -200,7 +200,7 @@ const CompanionLibrary = () => {
             {/* Discover Companions Section */}
             {otherCompanions.length > 0 && (
               <div>
-                <h2 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '20px', color: 'var(--text-primary)' }}>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '16px', color: 'var(--text-primary)' }}>
                   🌎 Discover Companions
                 </h2>
                 <div className="grid grid-3">

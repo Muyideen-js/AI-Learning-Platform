@@ -249,14 +249,41 @@
   margin: 0;
 }
 
-.btn-glow {
-  background: var(--text-primary);
-  color: var(--bg-primary);
-  border: none;
-  padding: 12px 24px;
-  border-radius: 6px;
-  font-weight: 600;
+.btn-glow:hover {
+  background: var(--text-secondary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Navigation Buttons Styling */
+.journey-nav .nav-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.glass-btn.icon-only {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  margin-top: 8px;
-  width: 100%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+}
+
+.glass-btn.icon-only:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.glass-btn.icon-only:active {
+  transform: translateY(0);
 }

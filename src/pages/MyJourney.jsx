@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { ArrowLeft, Home, Award, Layers, Hourglass, Target, Cpu, Trophy, Sparkles, ChevronRight, Book, BookOpen } from 'lucide-react';
+import { ArrowLeft, Home, Award, Target, Trophy, Sparkles, ChevronRight, Book, BookOpen } from 'lucide-react';
+import { PiBooksThin } from "react-icons/pi";
+import { CiTimer } from "react-icons/ci";
+import { BsPersonVideo3 } from "react-icons/bs";
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import './MyJourney.css';
@@ -185,21 +188,21 @@ const MyJourney = () => {
             {/* Overview Stats */}
             <motion.div className="metrics-row" variants={containerVariants} initial="hidden" animate="show">
               <motion.div className="metric-box glass-panel" variants={itemVariants}>
-                <Layers size={24} className="metric-icon" />
+                <PiBooksThin size={28} className="metric-icon" />
                 <div className="metric-text">
                   <span className="value">{stats.totalSessions}</span>
                   <span className="label">Total Sessions</span>
                 </div>
               </motion.div>
               <motion.div className="metric-box glass-panel" variants={itemVariants}>
-                <Hourglass size={24} className="metric-icon" />
+                <CiTimer size={28} className="metric-icon" />
                 <div className="metric-text">
                   <span className="value">{stats.totalMinutes}</span>
                   <span className="label">Minutes Learned</span>
                 </div>
               </motion.div>
               <motion.div className="metric-box glass-panel" variants={itemVariants}>
-                <Cpu size={24} className="metric-icon" />
+                <BsPersonVideo3 size={24} className="metric-icon" />
                 <div className="metric-text">
                   <span className="value">{stats.companionsCreated}</span>
                   <span className="label">AI Companions</span>
