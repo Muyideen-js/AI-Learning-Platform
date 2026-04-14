@@ -243,7 +243,7 @@ const MyJourney = () => {
               <div className="horizontal-scroll-grid">
                 {recentCompanions.length > 0 ? recentCompanions.map(comp => (
                   <div key={comp.id} className="mini-card glass-panel" onClick={() => navigate(`/companion/${comp.id}`)}>
-                    <div className="card-icon"><Cpu size={24} /></div>
+                    <div className="card-icon"><BsPersonVideo3 size={24} /></div>
                     <h4>{comp.name}</h4>
                     <span>{comp.subject}</span>
                   </div>
