@@ -41,8 +41,14 @@ const BookReader = () => {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [selectionData, setSelectionData] = useState(null);
   const [selectedContext, setSelectedContext] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  const [selectionRect, setSelectionRect] = useState(null);
+  const [pageTextItems, setPageTextItems] = useState([]);
+  
   const chatEndRef = useRef(null);
   const pdfContainerRef = useRef(null);
+  const pageRef = useRef(null);
 
   useEffect(() => {
     const fetchBook = async () => {
@@ -87,21 +93,93 @@ const BookReader = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  const handleTextSelection = () => {
-    const selection = window.getSelection();
-    const text = selection.toString().trim();
+  const handleMouseDown = (e) => {
+    // Only drag with left mouse button
+    if (e.button !== 0) return;
     
-    if (text && pdfContainerRef.current?.contains(selection.anchorNode)) {
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      
+    const container = pdfContainerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    setIsDragging(true);
+    setStartPos({ x, y });
+    setSelectionRect({ x, y, width: 0, height: 0 });
+    setSelectionData(null); // Clear previous selection info
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging || !startPos) return;
+
+    const container = pdfContainerRef.current;
+    const rect = container.getBoundingClientRect();
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+
+    const x = Math.min(startPos.x, currentX);
+    const y = Math.min(startPos.y, currentY);
+    const width = Math.abs(currentX - startPos.x);
+    const height = Math.abs(currentY - startPos.y);
+
+    setSelectionRect({ x, y, width, height });
+  };
+
+  const handleMouseUp = (e) => {
+    if (!isDragging) return;
+    setIsDragging(false);
+
+    if (selectionRect && selectionRect.width > 5 && selectionRect.height > 5) {
+      // Find text items within the selection box
+      // Coordinates in pageTextItems are in PDF points, we need to convert or just use DOM elements
+      // Simplest way: use the selectionRect to find overlapping DOM text spans
+      extractTextFromBox(selectionRect);
+    } else {
+      setSelectionRect(null);
+    }
+  };
+
+  const extractTextFromBox = (rect) => {
+    const container = pdfContainerRef.current;
+    if (!container) return;
+
+    const textLayer = container.querySelector('.react-pdf__Page__textContent');
+    if (!textLayer) return;
+
+    const spans = textLayer.querySelectorAll('span');
+    const selectedTexts = [];
+    const containerRect = container.getBoundingClientRect();
+
+    spans.forEach(span => {
+      const spanRect = span.getBoundingClientRect();
+      const relativeSpanRect = {
+        left: spanRect.left - containerRect.left,
+        top: spanRect.top - containerRect.top,
+        right: spanRect.right - containerRect.left,
+        bottom: spanRect.bottom - containerRect.top
+      };
+
+      // Check for intersection
+      if (
+        relativeSpanRect.left < rect.x + rect.width &&
+        relativeSpanRect.right > rect.x &&
+        relativeSpanRect.top < rect.y + rect.height &&
+        relativeSpanRect.bottom > rect.y
+      ) {
+        selectedTexts.push(span.innerText);
+      }
+    });
+
+    const combinedText = selectedTexts.join(' ').trim();
+    if (combinedText) {
       setSelectionData({
-        text,
-        x: rect.left + rect.width / 2,
-        y: rect.top - 10
+        text: combinedText,
+        x: rect.x + rect.width / 2 + containerRect.left,
+        y: rect.y + containerRect.top
       });
     } else {
-      setSelectionData(null);
+      setSelectionRect(null);
     }
   };
 
@@ -109,8 +187,7 @@ const BookReader = () => {
     if (selectionData) {
       setSelectedContext(selectionData.text);
       setSelectionData(null);
-      // Clear selection
-      window.getSelection().removeAllRanges();
+      setSelectionRect(null);
     }
   };
 
@@ -134,12 +211,23 @@ const BookReader = () => {
   };
 
   const changePage = (offset) => {
-    const newPage = pageNumber + offset;
-    if (newPage >= 1 && newPage <= numPages) {
-      setPageNumber(newPage);
-      if (pdfRef) extractTextFromPage(pdfRef, newPage);
-    }
+    setPageNumber((prev) => {
+      const next = prev + offset;
+      if (next >= 1 && (numPages ? next <= numPages : true)) {
+        return next;
+      }
+      return prev;
+    });
+    // Explicitly re-extract text when page state changes
   };
+
+  useEffect(() => {
+    if (pdfRef && pageNumber) {
+      extractTextFromPage(pdfRef, pageNumber);
+    }
+    setSelectionRect(null);
+    setSelectionData(null);
+  }, [pageNumber, pdfRef]);
 
   const handleAiAction = async (actionType) => {
     if (!extractedText.trim()) return;
@@ -210,10 +298,26 @@ const BookReader = () => {
         </div>
       </div>
 
-      <div className="reader-workspace" onMouseUp={handleTextSelection}>
+      <div 
+        className="reader-workspace" 
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      >
         {/* PDF Viewer Pane */}
         <div className="pdf-pane" ref={pdfContainerRef}>
           <div className="pdf-container">
+            {selectionRect && (
+              <div 
+                className="marquee-selection"
+                style={{
+                  left: `${selectionRect.x}px`,
+                  top: `${selectionRect.y}px`,
+                  width: `${selectionRect.width}px`,
+                  height: `${selectionRect.height}px`
+                }}
+              />
+            )}
             {selectionData && (
               <div 
                 className="selection-tooltip"
