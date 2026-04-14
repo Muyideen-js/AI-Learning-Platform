@@ -191,7 +191,7 @@ function ensureTutorFollowUp(text) {
   return `${trimmed}\n\nQuick check: does this part make sense, or should I simplify it further?`;
 }
 
-export const evaluateQuizAttempt = onCall({ region: REGION, timeoutSeconds: 30 }, async (request) => {
+export const evaluateQuizAttempt = onCall({ region: REGION, timeoutSeconds: 30, cors: true }, async (request) => {
   const uid = requireAuth(request);
   checkRateLimit(uid, 40, 60_000);
 
@@ -246,7 +246,7 @@ export const evaluateQuizAttempt = onCall({ region: REGION, timeoutSeconds: 30 }
   };
 });
 
-export const getLearningProgressSummary = onCall({ region: REGION, timeoutSeconds: 30 }, async (request) => {
+export const getLearningProgressSummary = onCall({ region: REGION, timeoutSeconds: 30, cors: true }, async (request) => {
   const uid = requireAuth(request);
   checkRateLimit(uid, 60, 60_000);
 
@@ -265,7 +265,7 @@ export const getLearningProgressSummary = onCall({ region: REGION, timeoutSecond
   return { summary };
 });
 
-export const generateTutorResponse = onCall({ region: REGION, timeoutSeconds: 60 }, async (request) => {
+export const generateTutorResponse = onCall({ region: REGION, timeoutSeconds: 60, cors: true }, async (request) => {
   const uid = requireAuth(request);
   checkRateLimit(uid, 40, 60_000);
 
@@ -388,7 +388,7 @@ export const generateTutorResponse = onCall({ region: REGION, timeoutSeconds: 60
   return { text, diagnostics };
 });
 
-export const generateAdaptiveQuiz = onCall({ region: REGION, timeoutSeconds: 60 }, async (request) => {
+export const generateAdaptiveQuiz = onCall({ region: REGION, timeoutSeconds: 60, cors: true }, async (request) => {
   const uid = requireAuth(request);
   checkRateLimit(uid, 20, 60_000);
 
@@ -448,7 +448,7 @@ Return only a JSON array. Each item:
   return { questions };
 });
 
-export const evaluateCodeSubmission = onCall({ region: REGION, timeoutSeconds: 60 }, async (request) => {
+export const evaluateCodeSubmission = onCall({ region: REGION, timeoutSeconds: 60, cors: true }, async (request) => {
   const uid = requireAuth(request);
   checkRateLimit(uid, 25, 60_000);
 
@@ -481,7 +481,7 @@ Return markdown in this format only:
   return { review };
 });
 
-export const generateCompanionCurriculum = onCall({ region: REGION, timeoutSeconds: 120 }, async (request) => {
+export const generateCompanionCurriculum = onCall({ region: REGION, timeoutSeconds: 120, cors: true }, async (request) => {
   const uid = requireAuth(request);
   checkRateLimit(uid, 10, 60_000);
 
@@ -539,12 +539,12 @@ Rules:
   return { modules: data.modules };
 });
 
-export const getTutorDiagnostics = onCall({ region: REGION }, async (request) => {
+export const getTutorDiagnostics = onCall({ region: REGION, cors: true }, async (request) => {
   const uid = requireAuth(request);
   return { diagnostics: diagnosticsByUser.get(uid) || null };
 });
 
-export const generateBookResponse = onCall({ region: REGION, timeoutSeconds: 120 }, async (request) => {
+export const generateBookResponse = onCall({ region: REGION, timeoutSeconds: 120, cors: true }, async (request) => {
   const uid = requireAuth(request);
   checkRateLimit(uid, 40, 60_000);
 

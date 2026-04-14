@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Send, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ArrowLeft, Send, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
 import { CiEdit } from "react-icons/ci";
 import { TbClockQuestion } from "react-icons/tb";
 import { PiChatCenteredTextThin } from "react-icons/pi";
@@ -211,20 +211,18 @@ const BookReader = () => {
   };
 
   const changePage = (offset) => {
-    setPageNumber((prev) => {
-      const next = prev + offset;
-      if (next >= 1 && (numPages ? next <= numPages : true)) {
-        return next;
-      }
-      return prev;
-    });
-    // Explicitly re-extract text when page state changes
+    if (!numPages) return;
+    const next = pageNumber + offset;
+    if (next >= 1 && next <= numPages) {
+      setPageNumber(next);
+    }
   };
 
   useEffect(() => {
     if (pdfRef && pageNumber) {
       extractTextFromPage(pdfRef, pageNumber);
     }
+    // Prevent old selection rectangles or tooltips from sticking around
     setSelectionRect(null);
     setSelectionData(null);
   }, [pageNumber, pdfRef]);
@@ -276,7 +274,7 @@ const BookReader = () => {
 
   if (loading) {
     return <div className="loading" style={{ height: '100vh', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', justifyContent: 'center' }}>
-      <Sparkles className="glow-icon" size={32} />
+      <Loader2 className="animate-spin" size={32} />
       <span>Fetching your document...</span>
     </div>;
   }
