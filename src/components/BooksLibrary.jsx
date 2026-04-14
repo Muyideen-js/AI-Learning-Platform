@@ -107,7 +107,7 @@ const BooksLibrary = () => {
               </div>
             ) : (
               <div className="empty-state books-empty">
-                <BookOpen size={32} className="empty-icon" />
+                <GiBlackBook size={32} className="empty-icon" />
                 <p>You haven't uploaded any books yet.</p>
                 <button onClick={() => setShowUploadModal(true)} className="empty-action-btn">Upload your first PDF</button>
               </div>
