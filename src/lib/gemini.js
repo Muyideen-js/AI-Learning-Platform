@@ -1,30 +1,86 @@
-import { httpsCallable } from 'firebase/functions';
-import { functions } from './firebase';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { db } from './firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-const callTutorResponse = httpsCallable(functions, 'generateTutorResponse');
-const callAdaptiveQuiz = httpsCallable(functions, 'generateAdaptiveQuiz');
-const callCodeReview = httpsCallable(functions, 'evaluateCodeSubmission');
-const callCurriculum = httpsCallable(functions, 'generateCompanionCurriculum');
-const callTutorDiagnostics = httpsCallable(functions, 'getTutorDiagnostics');
-const callEvaluateQuizAttempt = httpsCallable(functions, 'evaluateQuizAttempt');
-const callLearningProgressSummary = httpsCallable(functions, 'getLearningProgressSummary');
-const callBookResponse = httpsCallable(functions, 'generateBookResponse');
+// Initialize the Gemini AI SDK directly in the client
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+const DEFAULT_MODEL = 'gemini-1.5-flash';
+const MISSION_COLLECTION = 'learningMissionState';
 
+// Helper: Get learner mission state from Firestore directly
+const getMissionState = async (uid, companionId) => {
+  if (!uid) return null;
+  const ref = doc(db, MISSION_COLLECTION, `${uid}__${companionId || 'default'}`);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    return {
+      completedModules: 0,
+      interactions: 0,
+      difficultyLevel: 'beginner',
+      nextStep: 'Ask what topic the learner wants to master first.',
+      weakTopics: [],
+    };
+  }
+  return snap.data();
+};
+
+// Helper: Update learner mission state in Firestore directly
+const updateMissionState = async (uid, companionId, update) => {
+  if (!uid) return;
+  const ref = doc(db, MISSION_COLLECTION, `${uid}__${companionId || 'default'}`);
+  await setDoc(ref, {
+    ...update,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+};
+
+// AI: Book Reader Logic (Summarize, Quiz, Chat)
 export const generateBookAIResponse = async ({ action, bookContext, userMessage, conversationHistory }) => {
   try {
-    const result = await callBookResponse({
-      action,
-      bookContext,
-      userMessage,
-      conversationHistory
+    const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+    const safeContext = bookContext.substring(0, 50000); // Truncate safely
+
+    let prompt = '';
+    let systemInstruction = 'You are a helpful AI reading assistant.';
+
+    if (action === 'summarize') {
+      prompt = `Please provide a comprehensive summary of the following text:\n\n${safeContext}`;
+    } else if (action === 'quiz') {
+      prompt = `Based on the following text, generate a JSON array of exactly 3 multiple choice questions.\nReturn only a JSON array. Each item:\n{\n  "question":"...",\n  "options":["A","B","C","D"],\n  "correctAnswer":0,\n  "explanation":"..."\n}\n\nText:\n${safeContext}`;
+    } else {
+      const historyText = Array.isArray(conversationHistory) 
+        ? conversationHistory.slice(-10).map((m) => `${m.role === 'assistant' ? 'AI' : 'User'}: ${m.content}`).join('\n')
+        : '';
+      prompt = `Context Document:\n${safeContext}\n\n${historyText ? `Conversation History:\n${historyText}\n\n` : ''}User Question: ${userMessage}\n\nAnswer the user's question explicitly based on the context document provided. If the answer is not in the document, state that politely.`;
+    }
+
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
     });
-    return result?.data?.text || result?.data || null;
+
+    const response = await result.response;
+    let text = response.text();
+
+    // Clean up JSON if required for quiz
+    if (action === 'quiz') {
+      text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error('Failed to parse quiz JSON:', e);
+        return null;
+      }
+    }
+
+    return text;
   } catch (error) {
     console.error('Book AI Response Error:', error);
     throw new Error('Failed to communicate with AI for this book.');
   }
 };
 
+// AI: Main Tutor Chat Logic
 export const generateAIResponse = async (
   userMessage,
   companion,
@@ -35,35 +91,57 @@ export const generateAIResponse = async (
   memoryMeta = {}
 ) => {
   try {
-    const result = await callTutorResponse({
-      userMessage,
-      companion,
-      conversationHistory,
-      currentModule,
-      fileData,
-      memoryMeta: {
-        userId: memoryMeta?.userId || null,
-        companionId: memoryMeta?.companionId || null,
-      },
+    const uid = memoryMeta?.userId;
+    const companionId = memoryMeta?.companionId || companion?.id;
+    
+    // Fetch state for personalization
+    const missionState = await getMissionState(uid, companionId);
+    
+    const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+    const tone = companion?.style === 'formal' ? 'formal' : 'friendly';
+    
+    const historyText = conversationHistory
+      .slice(-12)
+      .map((m) => `${m?.role === 'assistant' ? 'Tutor' : 'Student'}: ${m.content}`)
+      .join('\n');
+
+    const systemInstruction = [
+      'You are an adaptive AI tutor.',
+      `Use ${tone} teaching style.`,
+      `Current learner level: ${missionState?.difficultyLevel || 'beginner'}.`,
+      `Known weak topics: ${(missionState?.weakTopics || []).slice(0, 4).join(', ') || 'none yet'}.`,
+      `Suggested next step: ${missionState?.nextStep || 'guide learner through current module'}.`,
+      'Ask one follow-up question when useful.',
+    ].join(' ');
+
+    const prompt = [
+      `Companion topic: ${companion?.topic || 'General learning'}`,
+      currentModule ? `Current module: ${currentModule.title || 'N/A'}` : '',
+      historyText ? `Recent conversation:\n${historyText}` : '',
+      `Student message: ${userMessage}`,
+    ].filter(Boolean).join('\n\n');
+
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: `${systemInstruction}\n\n${prompt}` }] }],
+      generationConfig: { temperature: 0.8, maxOutputTokens: 2048 },
     });
 
-    const text = result?.data?.text || "I'm having trouble connecting to my service right now.";
-   
-    const diagnostics = result?.data?.diagnostics || null;
+    const response = await result.response;
+    const text = response.text();
 
-    if (diagnostics && typeof memoryMeta?.onDiagnostics === 'function') {
-      try {
-        memoryMeta.onDiagnostics(diagnostics);
-      } catch (diagError) {
-        console.warn('Diagnostics callback failed:', diagError);
-      }
-    }
-
-    if (onStreamChunk && typeof text === 'string') {
+    // Stream emulation (keep original behavior)
+    if (onStreamChunk) {
       for (const word of text.split(' ')) {
         onStreamChunk(`${word} `);
         await new Promise((resolve) => setTimeout(resolve, 12));
       }
+    }
+
+    // Update mission state in background
+    if (uid && companionId) {
+      updateMissionState(uid, companionId, {
+        interactions: (missionState?.interactions || 0) + 1,
+      });
     }
 
     return text;
@@ -73,51 +151,27 @@ export const generateAIResponse = async (
   }
 };
 
-export const generateCurriculumWithQuizzes = async (
-  topic,
-  description,
-  numberOfModules = 8,
-  difficulty = 'Beginner'
-) => {
+// AI: Curriculum Generation
+export const generateCurriculumWithQuizzes = async (topic, description, numberOfModules = 8, difficulty = 'Beginner') => {
   try {
-    const result = await callCurriculum({
-      topic,
-      description,
-      numberOfModules,
-      difficulty,
-    });
-    const modules = result?.data?.modules;
-    if (!Array.isArray(modules)) {
-      throw new Error('Invalid curriculum response');
-    }
-    return modules;
+    const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+    const prompt = `Create a ${difficulty} curriculum for "${topic}". Description: ${description}. 
+    Return exactly ${numberOfModules} modules in strict JSON:
+    {"modules": [{"id": 1, "title": "Module title", "description": "Short description", "subtopics": [{"id": 1, "title": "Subtopic", "description": "Short description"}], "quiz": {"questions": [{"question": "...", "options": ["A","B","C","D"], "correctAnswer": 0}]}}]}`;
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().replace(/```json/gi, '').replace(/```/g, '').trim();
+    const data = JSON.parse(text);
+    return data.modules;
   } catch (error) {
     console.error('Curriculum Generation Error:', error);
-    throw new Error('Failed to generate curriculum. Please try again.');
+    throw new Error('Failed to generate curriculum.');
   }
 };
 
 export const generateCurriculum = generateCurriculumWithQuizzes;
 
-export const reviewCode = async (code, language, moduleContext = '', lastAiMessage = '') => {
-  try {
-    const result = await callCodeReview({
-      code,
-      language,
-      moduleContext,
-      lastAiMessage,
-    });
-    const review = result?.data?.review;
-    if (!review) {
-      throw new Error('Empty response from AI');
-    }
-    return review;
-  } catch (error) {
-    console.error('Code Review Error:', error);
-    throw new Error('Failed to review code. Please try again.');
-  }
-};
-
+// AI: Adaptive Quiz Generation
 export const generateDynamicQuiz = async (
   moduleTitle,
   moduleDescription,
@@ -126,57 +180,38 @@ export const generateDynamicQuiz = async (
   companionId = null
 ) => {
   try {
-    const result = await callAdaptiveQuiz({
-      moduleTitle,
-      moduleDescription,
-      conversationTranscript,
-      adaptiveContext,
-      companionId,
-    });
+    const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+    const level = adaptiveContext?.difficultyLevel || 'intermediate';
+    
+    const prompt = `Generate exactly 3 multiple choice questions for ${moduleTitle}. Difficulty: ${level}. 
+    Description: ${moduleDescription}. 
+    Return only a JSON array: [{"question":"...", "options":["A","B","C","D"], "correctAnswer":0, "explanation":"..."}]`;
 
-    const questions = result?.data?.questions;
-    if (!Array.isArray(questions) || questions.length === 0) {
-      return null;
-    }
-
-    return questions.slice(0, 3).map((q) => ({
-      question: q.question,
-      options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
-      correctAnswer: Number.isInteger(q.correctAnswer) ? q.correctAnswer : 0,
-      explanation: q.explanation || '',
-    }));
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().replace(/```json/gi, '').replace(/```/g, '').trim();
+    const questions = JSON.parse(text);
+    return questions.slice(0, 3);
   } catch (error) {
     console.error('Quiz generation failed:', error);
     return null;
   }
 };
 
-export const getTutorDiagnostics = async () => {
+// AI: Code Review
+export const reviewCode = async (code, language, moduleContext = '', lastAiMessage = '') => {
   try {
-    const result = await callTutorDiagnostics({});
-    return result?.data?.diagnostics || null;
-  } catch (error) {
-    console.error('Diagnostics fetch failed:', error);
-    return null;
-  }
-};
+    const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+    const prompt = `You are an expert ${language} coding tutor. Challenge: ${lastAiMessage}. Code: \n\`\`\`${language}\n${code}\n\`\`\`\nReturn markdown: **✅ Result: Passed** or **❌ Result: Failed**, plus short feedback.`;
 
-export const evaluateQuizAttempt = async ({ companionId, moduleTitle, score, passed }) => {
-  try {
-    const result = await callEvaluateQuizAttempt({ companionId, moduleTitle, score, passed });
-    return result?.data || null;
+    const result = await model.generateContent(prompt);
+    return result.response.text();
   } catch (error) {
-    console.error('Quiz attempt evaluation failed:', error);
-    return null;
+    console.error('Code Review Error:', error);
+    return 'Failed to review code.';
   }
-};
+}
 
-export const getLearningProgressSummary = async (companionId) => {
-  try {
-    const result = await callLearningProgressSummary({ companionId });
-    return result?.data?.summary || null;
-  } catch (error) {
-    console.error('Progress summary fetch failed:', error);
-    return null;
-  }
-};
+// Support other functions
+export const getTutorDiagnostics = async () => null;
+export const evaluateQuizAttempt = async ({ companionId, moduleTitle, score, passed }) => null;
+export const getLearningProgressSummary = async (companionId) => null;
