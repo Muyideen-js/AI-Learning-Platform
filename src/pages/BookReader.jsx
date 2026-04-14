@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Send, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { CiEdit } from "react-icons/ci";
 import { TbClockQuestion } from "react-icons/tb";
 import { PiChatCenteredTextThin } from "react-icons/pi";
@@ -17,7 +17,8 @@ import ReactMarkdown from 'react-markdown';
 import './BookReader.css';
 
 // Set up PDF worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Set up PDF worker using a stable CDN link
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const BookReader = () => {
   const { id } = useParams();
