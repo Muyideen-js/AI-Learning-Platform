@@ -249,10 +249,31 @@
   margin: 0;
 }
 
+.btn-glow {
+  background: linear-gradient(135deg, var(--text-primary) 0%, #3498db 100%);
+  color: #fff;
+  border: none;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 12px;
+  width: 100%;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+}
+
 .btn-glow:hover {
-  background: var(--text-secondary);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.5);
+  filter: brightness(1.1);
+}
+
+.btn-glow:active {
+  transform: translateY(0);
 }
 
 /* Navigation Buttons Styling */

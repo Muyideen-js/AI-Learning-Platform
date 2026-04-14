@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { BookOpen, Search, UploadCloud, Globe, Lock } from 'lucide-react';
+import { Search, UploadCloud, Globe, Lock } from 'lucide-react';
+import { BsFilePdf } from "react-icons/bs";
+import { GiBlackBook } from "react-icons/gi";
 import { useNavigate } from 'react-router-dom';
 import UploadBookModal from './UploadBookModal';
 import './BooksLibrary.css';
@@ -94,8 +96,13 @@ const BooksLibrary = () => {
             <h2 className="section-heading">My Library</h2>
             {myBooks.length > 0 ? (
               <div className="books-grid">
-                {myBooks.map((book) => (
-                  <BookCard key={book.id} book={book} onClick={() => handleBookClick(book.id)} />
+                {myBooks.map((book, index) => (
+                  <BookCard 
+                    key={book.id} 
+                    book={book} 
+                    index={index + 1} 
+                    onClick={() => handleBookClick(book.id)} 
+                  />
                 ))}
               </div>
             ) : (
@@ -111,8 +118,13 @@ const BooksLibrary = () => {
             <div className="books-section discover-section">
               <h2 className="section-heading"><Globe size={20} style={{ marginRight: '8px' }} /> Discover Public Books</h2>
               <div className="books-grid">
-                {discoverBooks.map((book) => (
-                  <BookCard key={book.id} book={book} onClick={() => handleBookClick(book.id)} />
+                {discoverBooks.map((book, index) => (
+                  <BookCard 
+                    key={book.id} 
+                    book={book} 
+                    index={index + 1} 
+                    onClick={() => handleBookClick(book.id)} 
+                  />
                 ))}
               </div>
             </div>
@@ -130,11 +142,21 @@ const BooksLibrary = () => {
 };
 
 // Book Card Subcomponent
-const BookCard = ({ book, onClick }) => {
+const BookCard = ({ book, index, onClick }) => {
+  const isPdf = book.fileExtension === 'pdf' || book.fileName?.toLowerCase().endsWith('.pdf');
+  const sizeFormatted = book.fileSize 
+    ? (book.fileSize / (1024 * 1024)).toFixed(2) + ' MB' 
+    : '';
+
   return (
     <div className="book-card glass-panel" onClick={onClick}>
+      <div className="book-sn">{index}.</div>
       <div className="book-cover-placeholder">
-        <BookOpen size={48} className="cover-icon" />
+        {isPdf ? (
+          <BsFilePdf size={48} className="cover-icon pdf-icon" />
+        ) : (
+          <GiBlackBook size={48} className="cover-icon book-icon" />
+        )}
         {book.isPublic ? (
           <div className="book-badge public" title="Public Book"><Globe size={12} /></div>
         ) : (
@@ -144,9 +166,7 @@ const BookCard = ({ book, onClick }) => {
       <div className="book-meta">
         <h3 className="book-title">{book.title}</h3>
         <p className="book-author">{book.author || 'Unknown Author'}</p>
-      </div>
-      <div className="book-actions-overlay">
-        <span>Read & Chat</span>
+        {sizeFormatted && <span className="book-size">{sizeFormatted}</span>}
       </div>
     </div>
   );

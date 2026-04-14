@@ -3,7 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Send, Sparkles, BookOpen, ChevronLeft, ChevronRight, FileQuestion } from 'lucide-react';
+import { ArrowLeft, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CiEdit } from "react-icons/ci";
+import { TbClockQuestion } from "react-icons/tb";
+import { Sparkles } from 'lucide-react'; // Keeping Sparkles for chat messages only
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -145,7 +148,10 @@ const BookReader = () => {
   };
 
   if (loading) {
-    return <div className="loading" style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading reader...</div>;
+    return <div className="loading" style={{ height: '100vh', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', justifyContent: 'center' }}>
+      <Sparkles className="glow-icon" size={32} />
+      <span>Fetching your document...</span>
+    </div>;
   }
 
   if (!book) return null;
@@ -172,8 +178,14 @@ const BookReader = () => {
             <Document
               file={pdfFile}
               onLoadSuccess={onDocumentLoadSuccess}
-              loading={<div className="pdf-loading">Loading PDF...</div>}
-              error={<div className="pdf-error">Failed to load PDF. If this was a local upload, please ensure you are on the same device where you uploaded it.</div>}
+              loading={<div className="pdf-loading">Preparing reader...</div>}
+              error={
+                <div className="pdf-error">
+                  <h3>Failed to load PDF</h3>
+                  <p>This document is stored locally in your browser. If you uploaded it on another device, you'll need to re-upload it here.</p>
+                  <button onClick={() => navigate('/library')} className="retry-btn">Back to Library</button>
+                </div>
+              }
             >
               <Page 
                 pageNumber={pageNumber} 
@@ -195,7 +207,7 @@ const BookReader = () => {
         {/* AI Companion Pane */}
         <div className="ai-pane glass-panel">
           <div className="ai-pane-header">
-            <h3><Sparkles size={18} /> Book Companion</h3>
+            <h3>Book Companion</h3>
             <div className="ai-quick-actions">
               <button 
                 className="quick-action-btn" 
@@ -203,7 +215,7 @@ const BookReader = () => {
                 disabled={isAiProcessing || !extractedText}
                 title="Summarize current page"
               >
-                <BookOpen size={16} /> Summarize
+                <CiEdit size={18} /> Summarize
               </button>
               <button 
                 className="quick-action-btn" 
@@ -211,7 +223,7 @@ const BookReader = () => {
                 disabled={isAiProcessing || !extractedText}
                 title="Generate quiz from current page"
               >
-                <FileQuestion size={16} /> Flash Quiz
+                <TbClockQuestion size={18} /> Flash Quiz
               </button>
             </div>
           </div>

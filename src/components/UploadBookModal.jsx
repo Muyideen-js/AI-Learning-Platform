@@ -21,24 +21,22 @@ const UploadBookModal = ({ isOpen, onClose, onUploadComplete }) => {
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
-    if (selected && selected.type === 'application/pdf') {
+    if (selected) {
       setFile(selected);
-      if (!title) setTitle(selected.name.replace('.pdf', ''));
+      const ext = selected.name.split('.').pop().toLowerCase();
+      if (!title) setTitle(selected.name.replace(`.${ext}`, ''));
       setError(null);
-    } else {
-      setError('Please select a valid PDF file.');
     }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     const dropped = e.dataTransfer.files[0];
-    if (dropped && dropped.type === 'application/pdf') {
+    if (dropped) {
       setFile(dropped);
-      if (!title) setTitle(dropped.name.replace('.pdf', ''));
+      const ext = dropped.name.split('.').pop().toLowerCase();
+      if (!title) setTitle(dropped.name.replace(`.${ext}`, ''));
       setError(null);
-    } else {
-      setError('Please drop a valid PDF file.');
     }
   };
 
@@ -66,6 +64,8 @@ const UploadBookModal = ({ isOpen, onClose, onUploadComplete }) => {
         fileUrl: 'local', // Indicator that it's stored locally
         localId, // Reference to IndexedDB key
         fileName: file.name,
+        fileSize: file.size,
+        fileExtension: file.name.split('.').pop().toLowerCase(),
         isPublic,
         userId: currentUser.uid,
         createdAt: serverTimestamp(),
@@ -116,12 +116,12 @@ const UploadBookModal = ({ isOpen, onClose, onUploadComplete }) => {
               <div className="drop-content">
                 <UploadCloud size={48} className="upload-icon" />
                 <p>Click to browse or drag & drop</p>
-                <span className="supported">Supports .pdf up to 50MB</span>
+                <span className="supported">Supports PDFs, EPUBs, and Docs</span>
               </div>
             )}
             <input 
               type="file" 
-              accept=".pdf" 
+              accept=".pdf,.epub,.docx,.doc,.txt" 
               ref={fileInputRef} 
               style={{ display: 'none' }} 
               onChange={handleFileChange} 
