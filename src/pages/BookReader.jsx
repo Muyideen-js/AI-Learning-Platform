@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CiEdit } from "react-icons/ci";
 import { TbClockQuestion } from "react-icons/tb";
+import { PiChatCenteredTextThin } from "react-icons/pi";
 import { Sparkles } from 'lucide-react'; // Keeping Sparkles for chat messages only
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -70,6 +71,12 @@ const BookReader = () => {
       }
     };
     fetchBook();
+
+    return () => {
+      if (pdfFile && pdfFile.startsWith('blob:')) {
+        URL.revokeObjectURL(pdfFile);
+      }
+    };
   }, [id, navigate]);
 
   useEffect(() => {
@@ -231,7 +238,7 @@ const BookReader = () => {
           <div className="ai-chat-history">
             {chatMessages.length === 0 ? (
               <div className="empty-chat-state">
-                <Sparkles size={32} />
+                <PiChatCenteredTextThin size={48} />
                 <p>Ask a question about the current page, or use the quick actions above to generate summaries and quizzes.</p>
               </div>
             ) : (
