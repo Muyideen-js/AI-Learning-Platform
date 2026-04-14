@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { db, storage } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { X, UploadCloud, FileText, CheckCircle } from 'lucide-react';
+import { saveFile } from '../lib/localDb';
 import './UploadBookModal.css';
 
 const UploadBookModal = ({ isOpen, onClose, onUploadComplete }) => {
@@ -49,49 +49,41 @@ const UploadBookModal = ({ isOpen, onClose, onUploadComplete }) => {
 
     setUploading(true);
     setError(null);
+    setProgress(10); // Start progress
 
     try {
-      const storageRef = ref(storage, `books/${currentUser.uid}/${Date.now()}_${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      // Create a unique ID for the local file
+      const localId = `local_${Date.now()}_${currentUser.uid}`;
+      
+      // Save to IndexedDB
+      await saveFile(localId, file);
+      setProgress(60);
 
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setProgress(p);
-        },
-        (err) => {
-          console.error(err);
-          setError('Failed to upload file.');
-          setUploading(false);
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          
-          const newDoc = await addDoc(collection(db, 'books'), {
-            title,
-            author: author || 'Unknown',
-            fileUrl: downloadURL,
-            fileName: file.name,
-            isPublic,
-            userId: currentUser.uid,
-            createdAt: serverTimestamp(),
-            tags: [],
-            likes: 0
-          });
+      // Save metadata to Firestore
+      const newDoc = await addDoc(collection(db, 'books'), {
+        title,
+        author: author || 'Unknown',
+        fileUrl: 'local', // Indicator that it's stored locally
+        localId, // Reference to IndexedDB key
+        fileName: file.name,
+        isPublic,
+        userId: currentUser.uid,
+        createdAt: serverTimestamp(),
+        tags: [],
+        likes: 0
+      });
 
-          setUploading(false);
-          setProgress(0);
-          setFile(null);
-          setTitle('');
-          setAuthor('');
-          if (onUploadComplete) onUploadComplete(newDoc.id);
-          onClose();
-        }
-      );
+      setProgress(100);
+      setUploading(false);
+      setProgress(0);
+      setFile(null);
+      setTitle('');
+      setAuthor('');
+      if (onUploadComplete) onUploadComplete(newDoc.id);
+      onClose();
     } catch (err) {
       console.error(err);
-      setError('An error occurred during upload.');
+      setError('An error occurred during local storage.');
       setUploading(false);
     }
   };

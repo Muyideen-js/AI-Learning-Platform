@@ -8,6 +8,7 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { generateBookAIResponse } from '../lib/gemini';
+import { getFile } from '../lib/localDb';
 import ReactMarkdown from 'react-markdown';
 import './BookReader.css';
 
@@ -20,6 +21,7 @@ const BookReader = () => {
   const { currentUser } = useAuth();
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [pdfFile, setPdfFile] = useState(null);
 
   // PDF State
   const [numPages, setNumPages] = useState(null);
@@ -40,7 +42,20 @@ const BookReader = () => {
         const docRef = doc(db, 'books', id);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setBook({ id: docSnap.id, ...docSnap.data() });
+          const bookData = { id: docSnap.id, ...docSnap.data() };
+          setBook(bookData);
+          
+          // If stored locally, fetch from IndexedDB
+          if (bookData.fileUrl === 'local' && bookData.localId) {
+            const fileBlob = await getFile(bookData.localId);
+            if (fileBlob) {
+              setPdfFile(URL.createObjectURL(fileBlob));
+            } else {
+              console.error('Local file not found in IndexedDB');
+            }
+          } else {
+            setPdfFile(bookData.fileUrl);
+          }
         } else {
           navigate('/library');
         }
@@ -155,10 +170,10 @@ const BookReader = () => {
         <div className="pdf-pane">
           <div className="pdf-container">
             <Document
-              file={book.fileUrl}
+              file={pdfFile}
               onLoadSuccess={onDocumentLoadSuccess}
               loading={<div className="pdf-loading">Loading PDF...</div>}
-              error={<div className="pdf-error">Failed to load PDF. Please ensure the file is accessible.</div>}
+              error={<div className="pdf-error">Failed to load PDF. If this was a local upload, please ensure you are on the same device where you uploaded it.</div>}
             >
               <Page 
                 pageNumber={pageNumber} 
