@@ -191,8 +191,7 @@
 }
 
 .mini-card:hover {
-  border-color: var(--text-secondary);
-  transform: translateY(-2px);
+  border-color: var(--text-tertiary); /* Just a slight border change, no lift */
 }
 
 .card-icon {
@@ -250,30 +249,30 @@
 }
 
 .btn-glow {
-  background: linear-gradient(135deg, var(--text-primary) 0%, #3498db 100%);
+  background: #000;
   color: #fff;
   border: none;
   padding: 14px 24px;
-  border-radius: 12px;
+  border-radius: 0;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   margin-top: 12px;
   width: 100%;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+  letter-spacing: 0.1em;
 }
 
 .btn-glow:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.5);
-  filter: brightness(1.1);
+  background: #111;
+  transform: none;
+  box-shadow: none;
+  filter: none;
 }
 
 .btn-glow:active {
-  transform: translateY(0);
+  transform: none;
 }
 
 /* Navigation Buttons Styling */

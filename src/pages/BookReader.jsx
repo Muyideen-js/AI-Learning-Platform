@@ -38,7 +38,10 @@ const BookReader = () => {
   const [chatMessages, setChatMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const [selectionData, setSelectionData] = useState(null);
+  const [selectedContext, setSelectedContext] = useState(null);
   const chatEndRef = useRef(null);
+  const pdfContainerRef = useRef(null);
 
   useEffect(() => {
     const fetchBook = async () => {
@@ -82,6 +85,33 @@ const BookReader = () => {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
+
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    const text = selection.toString().trim();
+    
+    if (text && pdfContainerRef.current?.contains(selection.anchorNode)) {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      
+      setSelectionData({
+        text,
+        x: rect.left + rect.width / 2,
+        y: rect.top - 10
+      });
+    } else {
+      setSelectionData(null);
+    }
+  };
+
+  const handleAddToChat = () => {
+    if (selectionData) {
+      setSelectedContext(selectionData.text);
+      setSelectionData(null);
+      // Clear selection
+      window.getSelection().removeAllRanges();
+    }
+  };
 
   const onDocumentLoadSuccess = async (pdf) => {
     setNumPages(pdf.numPages);
@@ -130,7 +160,7 @@ const BookReader = () => {
         content: m.text
       }));
 
-      const contextHint = `[Currently reading Page ${pageNumber} of "${book.title}"]\n\n${extractedText}`;
+      const contextHint = `[Currently reading Page ${pageNumber} of "${book.title}"]\n${selectedContext ? `[SELECTED CONTEXT: "${selectedContext}"]\n` : ''}\n${extractedText}`;
 
       const responseText = await generateBookAIResponse({
         action: actionType,
@@ -140,6 +170,7 @@ const BookReader = () => {
       });
 
       setChatMessages((prev) => [...prev, { sender: 'ai', text: responseText }]);
+      if (selectedContext) setSelectedContext(null);
     } catch (err) {
       console.error(err);
       setChatMessages((prev) => [...prev, { sender: 'ai', text: 'Sorry, I encountered an error. Please try again.' }]);
@@ -178,10 +209,25 @@ const BookReader = () => {
         </div>
       </div>
 
-      <div className="reader-workspace">
+      <div className="reader-workspace" onMouseUp={handleTextSelection}>
         {/* PDF Viewer Pane */}
-        <div className="pdf-pane">
+        <div className="pdf-pane" ref={pdfContainerRef}>
           <div className="pdf-container">
+            {selectionData && (
+              <div 
+                className="selection-tooltip"
+                style={{ 
+                  left: `${selectionData.x}px`, 
+                  top: `${selectionData.y}px`,
+                  position: 'fixed',
+                  transform: 'translateX(-50%) translateY(-100%)'
+                }}
+              >
+                <button onClick={handleAddToChat}>
+                  <span>Add to Chat</span>
+                </button>
+              </div>
+            )}
             <Document
               file={pdfFile}
               onLoadSuccess={onDocumentLoadSuccess}
@@ -262,17 +308,34 @@ const BookReader = () => {
             <div ref={chatEndRef} />
           </div>
 
-          <form onSubmit={handleSendMessage} className="ai-chat-input">
-            <input
-              type="text"
-              placeholder="Ask about this page..."
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              disabled={isAiProcessing || !extractedText}
-            />
-            <button type="submit" disabled={!inputMessage.trim() || isAiProcessing}>
-              <Send size={18} />
-            </button>
+          <form onSubmit={handleSendMessage} className="ai-chat-input-wrapper">
+            {selectedContext && (
+              <div className="selected-context-chip">
+                <div className="chip-content">
+                  <span className="chip-label">Context</span>
+                  <span className="chip-text">{selectedContext}</span>
+                </div>
+                <button 
+                  type="button" 
+                  className="remove-chip" 
+                  onClick={() => setSelectedContext(null)}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            <div className="ai-chat-input">
+              <input
+                type="text"
+                placeholder="Ask about this page..."
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                disabled={isAiProcessing || (!extractedText && !selectedContext)}
+              />
+              <button type="submit" disabled={(!inputMessage.trim() && !selectedContext) || isAiProcessing}>
+                <Send size={18} />
+              </button>
+            </div>
           </form>
         </div>
       </div>
