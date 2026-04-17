@@ -25,6 +25,16 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState(null);
 
+  const isOfflineFirestoreError = (error) => {
+    const code = error?.code || '';
+    const message = String(error?.message || '').toLowerCase();
+    return (
+      code === 'unavailable' ||
+      message.includes('client is offline') ||
+      message.includes('could not reach cloud firestore backend')
+    );
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
@@ -77,7 +87,11 @@ export const AuthProvider = ({ children }) => {
             setUserData(newUserData);
           }
         } catch (error) {
-          console.error('Error fetching user data:', error);
+          if (isOfflineFirestoreError(error)) {
+            console.warn('Firestore appears offline. Using local auth profile until connection is restored.');
+          } else {
+            console.error('Error fetching user data:', error);
+          }
           // Set basic user data from auth if Firestore fails
           setUserData({
             uid: user.uid,

@@ -4,8 +4,41 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 // Initialize the Gemini AI SDK directly in the client
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-const DEFAULT_MODEL = 'gemini-1.5-flash';
+const DEFAULT_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.0-flash';
+const FALLBACK_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
 const MISSION_COLLECTION = 'learningMissionState';
+
+const isModelNotFoundError = (error) => {
+  const message = String(error?.message || '');
+  return message.includes('models/') && message.includes('is not found');
+};
+
+const generateWithModelFallback = async (prompt, generationConfig = { temperature: 0.7, maxOutputTokens: 2048 }) => {
+  const candidates = [DEFAULT_MODEL, ...FALLBACK_MODELS].filter(
+    (model, idx, arr) => model && arr.indexOf(model) === idx
+  );
+
+  let lastError = null;
+
+  for (const modelName of candidates) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig,
+      });
+      return await result.response;
+    } catch (error) {
+      lastError = error;
+      if (!isModelNotFoundError(error)) {
+        throw error;
+      }
+      console.warn(`Gemini model "${modelName}" is unavailable. Trying fallback...`);
+    }
+  }
+
+  throw lastError || new Error('No Gemini model was available.');
+};
 
 // Helper: Get learner mission state from Firestore directly
 const getMissionState = async (uid, companionId) => {
@@ -37,11 +70,9 @@ const updateMissionState = async (uid, companionId, update) => {
 // AI: Book Reader Logic (Summarize, Quiz, Chat)
 export const generateBookAIResponse = async ({ action, bookContext, userMessage, conversationHistory }) => {
   try {
-    const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
     const safeContext = bookContext.substring(0, 50000); // Truncate safely
 
     let prompt = '';
-    let systemInstruction = 'You are a helpful AI reading assistant.';
 
     if (action === 'summarize') {
       prompt = `Please provide a comprehensive summary of the following text:\n\n${safeContext}`;
@@ -54,12 +85,7 @@ export const generateBookAIResponse = async ({ action, bookContext, userMessage,
       prompt = `Context Document:\n${safeContext}\n\n${historyText ? `Conversation History:\n${historyText}\n\n` : ''}User Question: ${userMessage}\n\nAnswer the user's question explicitly based on the context document provided. If the answer is not in the document, state that politely.`;
     }
 
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
-    });
-
-    const response = await result.response;
+    const response = await generateWithModelFallback(prompt, { temperature: 0.7, maxOutputTokens: 2048 });
     let text = response.text();
 
     // Clean up JSON if required for quiz
@@ -97,7 +123,6 @@ export const generateAIResponse = async (
     // Fetch state for personalization
     const missionState = await getMissionState(uid, companionId);
     
-    const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
     const tone = companion?.style === 'formal' ? 'formal' : 'friendly';
     
     const historyText = conversationHistory
@@ -121,12 +146,7 @@ export const generateAIResponse = async (
       `Student message: ${userMessage}`,
     ].filter(Boolean).join('\n\n');
 
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: `${systemInstruction}\n\n${prompt}` }] }],
-      generationConfig: { temperature: 0.8, maxOutputTokens: 2048 },
-    });
-
-    const response = await result.response;
+    const response = await generateWithModelFallback(`${systemInstruction}\n\n${prompt}`, { temperature: 0.8, maxOutputTokens: 2048 });
     const text = response.text();
 
     // Stream emulation (keep original behavior)
@@ -154,13 +174,12 @@ export const generateAIResponse = async (
 // AI: Curriculum Generation
 export const generateCurriculumWithQuizzes = async (topic, description, numberOfModules = 8, difficulty = 'Beginner') => {
   try {
-    const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
     const prompt = `Create a ${difficulty} curriculum for "${topic}". Description: ${description}. 
     Return exactly ${numberOfModules} modules in strict JSON:
     {"modules": [{"id": 1, "title": "Module title", "description": "Short description", "subtopics": [{"id": 1, "title": "Subtopic", "description": "Short description"}], "quiz": {"questions": [{"question": "...", "options": ["A","B","C","D"], "correctAnswer": 0}]}}]}`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().replace(/```json/gi, '').replace(/```/g, '').trim();
+    const response = await generateWithModelFallback(prompt, { temperature: 0.7, maxOutputTokens: 2048 });
+    const text = response.text().replace(/```json/gi, '').replace(/```/g, '').trim();
     const data = JSON.parse(text);
     return data.modules;
   } catch (error) {
@@ -180,15 +199,14 @@ export const generateDynamicQuiz = async (
   companionId = null
 ) => {
   try {
-    const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
     const level = adaptiveContext?.difficultyLevel || 'intermediate';
     
     const prompt = `Generate exactly 3 multiple choice questions for ${moduleTitle}. Difficulty: ${level}. 
     Description: ${moduleDescription}. 
     Return only a JSON array: [{"question":"...", "options":["A","B","C","D"], "correctAnswer":0, "explanation":"..."}]`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().replace(/```json/gi, '').replace(/```/g, '').trim();
+    const response = await generateWithModelFallback(prompt, { temperature: 0.7, maxOutputTokens: 2048 });
+    const text = response.text().replace(/```json/gi, '').replace(/```/g, '').trim();
     const questions = JSON.parse(text);
     return questions.slice(0, 3);
   } catch (error) {
@@ -200,11 +218,10 @@ export const generateDynamicQuiz = async (
 // AI: Code Review
 export const reviewCode = async (code, language, moduleContext = '', lastAiMessage = '') => {
   try {
-    const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
     const prompt = `You are an expert ${language} coding tutor. Challenge: ${lastAiMessage}. Code: \n\`\`\`${language}\n${code}\n\`\`\`\nReturn markdown: **✅ Result: Passed** or **❌ Result: Failed**, plus short feedback.`;
 
-    const result = await model.generateContent(prompt);
-    return result.response.text();
+    const response = await generateWithModelFallback(prompt, { temperature: 0.7, maxOutputTokens: 1024 });
+    return response.text();
   } catch (error) {
     console.error('Code Review Error:', error);
     return 'Failed to review code.';
