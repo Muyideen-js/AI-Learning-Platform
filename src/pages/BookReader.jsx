@@ -227,6 +227,31 @@ const BookReader = () => {
     setSelectionData(null);
   }, [pageNumber, pdfRef]);
 
+  const formatQuizResponse = (quizData) => {
+    if (!Array.isArray(quizData) || quizData.length === 0) {
+      return 'I could not generate quiz questions from this page. Please try again.';
+    }
+
+    return quizData.map((q, index) => {
+      const options = Array.isArray(q.options)
+        ? q.options.map((option, optionIndex) => `- ${String.fromCharCode(65 + optionIndex)}. ${option}`).join('\n')
+        : '- No options provided';
+
+      const answerIndex = Number.isInteger(q.correctAnswer) ? q.correctAnswer : null;
+      const answerLabel = answerIndex !== null && answerIndex >= 0 ? String.fromCharCode(65 + answerIndex) : 'Unknown';
+
+      return [
+        `### Question ${index + 1}`,
+        q.question || 'No question text provided.',
+        '',
+        options,
+        '',
+        `**Answer:** ${answerLabel}`,
+        q.explanation ? `**Explanation:** ${q.explanation}` : '',
+      ].filter(Boolean).join('\n');
+    }).join('\n\n');
+  };
+
   const handleAiAction = async (actionType) => {
     if (!extractedText.trim()) return;
     
@@ -249,14 +274,25 @@ const BookReader = () => {
 
       const contextHint = `[Currently reading Page ${pageNumber} of "${book.title}"]\n${selectedContext ? `[SELECTED CONTEXT: "${selectedContext}"]\n` : ''}\n${extractedText}`;
 
-      const responseText = await generateBookAIResponse({
+      const response = await generateBookAIResponse({
         action: actionType,
         bookContext: contextHint,
         userMessage: actionType === 'chat' ? inputMessage : '',
         conversationHistory: history
       });
 
-      setChatMessages((prev) => [...prev, { sender: 'ai', text: responseText }]);
+      let aiText = '';
+      if (actionType === 'quiz') {
+        aiText = formatQuizResponse(response);
+      } else if (typeof response === 'string') {
+        aiText = response.trim();
+      }
+
+      if (!aiText) {
+        aiText = 'I could not generate a response from this page. Please try again.';
+      }
+
+      setChatMessages((prev) => [...prev, { sender: 'ai', text: aiText }]);
       if (selectedContext) setSelectedContext(null);
     } catch (err) {
       console.error(err);
@@ -296,15 +332,15 @@ const BookReader = () => {
         </div>
       </div>
 
-      <div 
-        className="reader-workspace" 
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-      >
+      <div className="reader-workspace">
         {/* PDF Viewer Pane */}
         <div className="pdf-pane" ref={pdfContainerRef}>
-          <div className="pdf-container">
+          <div
+            className="pdf-container"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+          >
             {selectionRect && (
               <div 
                 className="marquee-selection"
